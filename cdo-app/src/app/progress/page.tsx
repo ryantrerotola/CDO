@@ -16,7 +16,6 @@ import {
   BookOpen,
   Flame,
   Award,
-  ChevronRight,
   Calendar,
 } from "lucide-react";
 import {
@@ -32,43 +31,95 @@ import {
   YAxis,
   Tooltip,
 } from "recharts";
+import { useMemo } from "react";
 
-const careerTimeline = [
-  { role: "Data Analyst", status: "completed", year: "2018" },
-  { role: "Senior Analyst", status: "completed", year: "2020" },
-  { role: "Analytics Manager", status: "completed", year: "2022" },
-  { role: "Director of Data", status: "current", year: "2024" },
-  { role: "VP of Data", status: "upcoming", year: "2026" },
-  { role: "Chief Data Officer", status: "target", year: "2028" },
-];
-
-// Simulated monthly activity data
-const activityData = [
-  { month: "Sep", articles: 45, goals: 12, streak: 22 },
-  { month: "Oct", articles: 52, goals: 15, streak: 28 },
-  { month: "Nov", articles: 38, goals: 10, streak: 15 },
-  { month: "Dec", articles: 41, goals: 14, streak: 20 },
-  { month: "Jan", articles: 58, goals: 18, streak: 30 },
-  { month: "Feb", articles: 63, goals: 20, streak: 28 },
-  { month: "Mar", articles: 24, goals: 8, streak: 11 },
-];
-
-// Simulated activity heatmap data (last 12 weeks)
-function generateHeatmapData() {
-  const data: { week: number; day: number; value: number }[] = [];
-  for (let week = 0; week < 12; week++) {
-    for (let day = 0; day < 7; day++) {
-      data.push({
-        week,
-        day,
-        value: Math.floor(Math.random() * 5),
-      });
+function computeStreak(goals: { entries: { date: string; value: number }[] }[]): number {
+  const allDates = new Set<string>();
+  for (const goal of goals) {
+    for (const entry of goal.entries) {
+      allDates.add(new Date(entry.date).toISOString().split("T")[0]);
     }
   }
+  if (allDates.size === 0) return 0;
+
+  const sorted = Array.from(allDates).sort().reverse();
+  const today = new Date().toISOString().split("T")[0];
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+
+  // Streak must include today or yesterday to be active
+  if (sorted[0] !== today && sorted[0] !== yesterday) return 0;
+
+  let streak = 1;
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = new Date(sorted[i - 1]);
+    const curr = new Date(sorted[i]);
+    const diffDays = (prev.getTime() - curr.getTime()) / 86400000;
+    if (diffDays === 1) {
+      streak++;
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
+function computeMonthlyActivity(goals: { entries: { date: string; value: number }[] }[]) {
+  const months: Record<string, { goals: number }> = {};
+
+  for (const goal of goals) {
+    for (const entry of goal.entries) {
+      const d = new Date(entry.date);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      if (!months[key]) months[key] = { goals: 0 };
+      months[key].goals += entry.value;
+    }
+  }
+
+  const sorted = Object.entries(months)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-6);
+
+  return sorted.map(([key, data]) => {
+    const [year, month] = key.split("-");
+    const label = new Date(parseInt(year), parseInt(month) - 1).toLocaleString("default", { month: "short" });
+    return { month: label, goals: data.goals };
+  });
+}
+
+function computeHeatmapData(goals: { entries: { date: string; value: number }[] }[]) {
+  const data: { week: number; day: number; value: number }[] = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Count activities per date
+  const dateCounts: Record<string, number> = {};
+  for (const goal of goals) {
+    for (const entry of goal.entries) {
+      const dateKey = new Date(entry.date).toISOString().split("T")[0];
+      dateCounts[dateKey] = (dateCounts[dateKey] || 0) + entry.value;
+    }
+  }
+
+  // Build 12 weeks of data ending today
+  const startOfWeek = new Date(today);
+  startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay()); // Sunday
+  const gridStart = new Date(startOfWeek);
+  gridStart.setDate(gridStart.getDate() - 11 * 7);
+
+  for (let week = 0; week < 12; week++) {
+    for (let day = 0; day < 7; day++) {
+      const cellDate = new Date(gridStart);
+      cellDate.setDate(cellDate.getDate() + week * 7 + day);
+      const dateKey = cellDate.toISOString().split("T")[0];
+      const count = dateCounts[dateKey] || 0;
+      // Cap at 4 for color scale
+      data.push({ week, day, value: Math.min(count, 4) });
+    }
+  }
+
   return data;
 }
 
-const heatmapData = generateHeatmapData();
 const heatmapColors = [
   "bg-gray-100 dark:bg-gray-800",
   "bg-green-100 dark:bg-green-900",
@@ -89,6 +140,17 @@ export default function ProgressPage() {
   const activeGoals = goals.filter((g) => g.status === "ACTIVE");
   const completedGoals = goals.filter((g) => g.status === "COMPLETED");
 
+  const streak = useMemo(() => computeStreak(goals), [goals]);
+  const monthlyActivity = useMemo(() => computeMonthlyActivity(goals), [goals]);
+  const heatmapData = useMemo(() => computeHeatmapData(goals), [goals]);
+
+  const totalEntries = useMemo(
+    () => goals.reduce((sum, g) => sum + g.entries.length, 0),
+    [goals]
+  );
+
+  const readinessScore = profile.resumeAnalysis?.overallReadiness ?? 0;
+
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <div className="mb-6">
@@ -99,70 +161,6 @@ export default function ProgressPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Career Timeline */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-[var(--primary)]" />
-              Career Timeline
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between overflow-x-auto pb-4">
-              {careerTimeline.map((milestone, i) => (
-                <div key={milestone.role} className="flex items-center">
-                  <div className="flex flex-col items-center min-w-[100px]">
-                    <div
-                      className={`w-4 h-4 rounded-full border-2 ${
-                        milestone.status === "completed"
-                          ? "bg-[var(--success)] border-[var(--success)]"
-                          : milestone.status === "current"
-                            ? "bg-[var(--primary)] border-[var(--primary)] ring-4 ring-[var(--primary)]/20"
-                            : milestone.status === "target"
-                              ? "bg-[var(--warning)] border-[var(--warning)]"
-                              : "bg-[var(--background)] border-[var(--muted-foreground)]"
-                      }`}
-                    />
-                    <div className="mt-2 text-center">
-                      <p
-                        className={`text-sm font-medium ${
-                          milestone.status === "current"
-                            ? "text-[var(--primary)]"
-                            : milestone.status === "target"
-                              ? "text-[var(--warning)]"
-                              : ""
-                        }`}
-                      >
-                        {milestone.role}
-                      </p>
-                      <p className="text-xs text-[var(--muted-foreground)]">
-                        {milestone.year}
-                      </p>
-                      {milestone.status === "current" && (
-                        <Badge className="mt-1">Current</Badge>
-                      )}
-                      {milestone.status === "target" && (
-                        <Badge variant="warning" className="mt-1">
-                          Target
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                  {i < careerTimeline.length - 1 && (
-                    <div
-                      className={`h-0.5 w-12 mx-2 ${
-                        milestone.status === "completed"
-                          ? "bg-[var(--success)]"
-                          : "bg-[var(--border)]"
-                      }`}
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Skill Radar Chart */}
         <Card>
           <CardHeader>
@@ -198,7 +196,7 @@ export default function ProgressPage() {
                 CDO Readiness Score
               </p>
               <p className="text-2xl font-bold text-[var(--primary)]">
-                {profile.resumeAnalysis?.overallReadiness || 62}%
+                {readinessScore}%
               </p>
             </div>
           </CardContent>
@@ -213,25 +211,25 @@ export default function ProgressPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={activityData}>
-                <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip />
-                <Bar
-                  dataKey="articles"
-                  fill="var(--primary)"
-                  name="Articles Read"
-                  radius={[4, 4, 0, 0]}
-                />
-                <Bar
-                  dataKey="goals"
-                  fill="var(--success)"
-                  name="Goals Completed"
-                  radius={[4, 4, 0, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>
+            {monthlyActivity.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={monthlyActivity}>
+                  <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip />
+                  <Bar
+                    dataKey="goals"
+                    fill="var(--primary)"
+                    name="Goal Progress"
+                    radius={[4, 4, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-[300px] text-[var(--muted-foreground)]">
+                <p>Log goal progress to see monthly activity</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -304,16 +302,16 @@ export default function ProgressPage() {
               <div className="p-4 rounded-lg bg-[var(--accent)] text-center">
                 <div className="flex items-center justify-center gap-1">
                   <Flame className="h-6 w-6 text-orange-500" />
-                  <p className="text-3xl font-bold">11</p>
+                  <p className="text-3xl font-bold">{streak}</p>
                 </div>
                 <p className="text-sm text-[var(--muted-foreground)]">
                   Day Streak
                 </p>
               </div>
               <div className="p-4 rounded-lg bg-[var(--accent)] text-center">
-                <p className="text-3xl font-bold">321</p>
+                <p className="text-3xl font-bold">{totalEntries}</p>
                 <p className="text-sm text-[var(--muted-foreground)]">
-                  Articles Read
+                  Activities Logged
                 </p>
               </div>
             </div>
