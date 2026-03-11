@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getAuthUserId } from "@/lib/api-auth";
 
-export async function GET(request: NextRequest) {
-  const userId = request.nextUrl.searchParams.get("userId");
-  if (!userId) {
-    return NextResponse.json({ error: "userId required" }, { status: 400 });
-  }
+export async function GET() {
+  const userId = await getAuthUserId();
+  if (userId instanceof NextResponse) return userId;
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -24,12 +23,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  const body = await request.json();
-  const { userId, ...updates } = body;
+  const userId = await getAuthUserId();
+  if (userId instanceof NextResponse) return userId;
 
-  if (!userId) {
-    return NextResponse.json({ error: "userId required" }, { status: 400 });
-  }
+  const updates = await request.json();
 
   const user = await prisma.user.update({
     where: { id: userId },

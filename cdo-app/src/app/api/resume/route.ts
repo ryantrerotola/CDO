@@ -1,23 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { analyzeResume } from "@/lib/ai";
+import { getAuthUserId } from "@/lib/api-auth";
 
 export async function POST(request: NextRequest) {
+  const userId = await getAuthUserId();
+  if (userId instanceof NextResponse) return userId;
+
   const formData = await request.formData();
   const file = formData.get("file") as File | null;
-  const userId = formData.get("userId") as string | null;
 
-  if (!file || !userId) {
+  if (!file) {
     return NextResponse.json(
-      { error: "file and userId are required" },
+      { error: "file is required" },
       { status: 400 }
     );
   }
 
-  // Read file content as text
   const text = await file.text();
 
-  // Analyze resume with Claude AI
   let analysis;
   try {
     analysis = await analyzeResume(text);
@@ -29,7 +30,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Store resume and analysis in database
   const resume = await prisma.resume.create({
     data: {
       userId,
@@ -48,7 +48,6 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  // Update user's skill assessment based on resume analysis
   await prisma.user.update({
     where: { id: userId },
     data: {
@@ -62,11 +61,9 @@ export async function POST(request: NextRequest) {
   });
 }
 
-export async function GET(request: NextRequest) {
-  const userId = request.nextUrl.searchParams.get("userId");
-  if (!userId) {
-    return NextResponse.json({ error: "userId required" }, { status: 400 });
-  }
+export async function GET() {
+  const userId = await getAuthUserId();
+  if (userId instanceof NextResponse) return userId;
 
   const resumes = await prisma.resume.findMany({
     where: { userId },

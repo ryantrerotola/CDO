@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession, signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -11,6 +12,7 @@ import {
   TrendingUp,
   BookOpen,
   PenLine,
+  LogOut,
 } from "lucide-react";
 
 const navItems = [
@@ -25,6 +27,7 @@ const navItems = [
 
 export function Navigation() {
   const pathname = usePathname();
+  const { data: session } = useSession();
 
   return (
     <nav className="flex flex-col h-full bg-[var(--card)] border-r border-[var(--border)]">
@@ -57,10 +60,31 @@ export function Navigation() {
         })}
       </div>
 
-      <div className="p-4 border-t border-[var(--border)]">
-        <div className="text-xs text-[var(--muted-foreground)]">
-          Target: Chief Data Officer
-        </div>
+      <div className="p-4 border-t border-[var(--border)] space-y-3">
+        {session?.user && (
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-[var(--primary)] flex items-center justify-center text-[var(--primary-foreground)] text-sm font-medium">
+              {session.user.name?.[0]?.toUpperCase() || session.user.email?.[0]?.toUpperCase() || "?"}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">
+                {session.user.name || session.user.email}
+              </p>
+              {session.user.name && (
+                <p className="text-xs text-[var(--muted-foreground)] truncate">
+                  {session.user.email}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+        <button
+          onClick={() => signOut({ callbackUrl: "/signin" })}
+          className="flex items-center gap-2 text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors w-full"
+        >
+          <LogOut className="h-3.5 w-3.5" />
+          Sign Out
+        </button>
       </div>
     </nav>
   );

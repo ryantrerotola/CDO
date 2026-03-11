@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCompanyIntelligence } from "@/lib/ai";
+import { getAuthUserId } from "@/lib/api-auth";
 
-export async function GET(request: NextRequest) {
-  const userId = request.nextUrl.searchParams.get("userId");
-  if (!userId) {
-    return NextResponse.json({ error: "userId required" }, { status: 400 });
-  }
+export async function GET() {
+  const userId = await getAuthUserId();
+  if (userId instanceof NextResponse) return userId;
 
   const companies = await prisma.targetCompany.findMany({
     where: { userId },
@@ -17,12 +16,15 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const body = await request.json();
-  const { userId, name, industry, website } = body;
+  const userId = await getAuthUserId();
+  if (userId instanceof NextResponse) return userId;
 
-  if (!userId || !name) {
+  const body = await request.json();
+  const { name, industry, website } = body;
+
+  if (!name) {
     return NextResponse.json(
-      { error: "userId and name are required" },
+      { error: "name is required" },
       { status: 400 }
     );
   }
@@ -56,9 +58,18 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const userId = await getAuthUserId();
+  if (userId instanceof NextResponse) return userId;
+
   const id = request.nextUrl.searchParams.get("id");
   if (!id) {
     return NextResponse.json({ error: "id required" }, { status: 400 });
+  }
+
+  // Verify the company belongs to this user
+  const existing = await prisma.targetCompany.findFirst({ where: { id, userId } });
+  if (!existing) {
+    return NextResponse.json({ error: "Company not found" }, { status: 404 });
   }
 
   await prisma.targetCompany.delete({ where: { id } });

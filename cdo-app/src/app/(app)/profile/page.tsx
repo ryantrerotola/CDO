@@ -1,16 +1,16 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import {
   Card,
   CardHeader,
   CardTitle,
   CardContent,
-  CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input, Select, Textarea } from "@/components/ui/input";
+import { Input, Select } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { useAppStore } from "@/lib/store";
 import { cdoSkillDomains } from "@/data/seed-content";
@@ -19,7 +19,6 @@ import {
   Upload,
   Building2,
   Plus,
-  X,
   FileText,
   AlertTriangle,
   CheckCircle2,
@@ -28,92 +27,145 @@ import {
 } from "lucide-react";
 
 export default function ProfilePage() {
+  const { data: session } = useSession();
   const { profile, setProfile } = useAppStore();
   const [newCompany, setNewCompany] = useState({ name: "", industry: "" });
   const [showAddCompany, setShowAddCompany] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    fetch("/api/profile")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && !data.error) {
+          setProfile({
+            name: data.name || "",
+            email: data.email || "",
+            currentRole: data.currentRole || "",
+            industry: data.industry || "",
+            targetTimeline: data.targetTimeline || "3 years",
+            skills: data.skillAssessment || profile.skills,
+            resumeUploaded: data.resumes?.length > 0,
+            resumeAnalysis: data.resumes?.[0]?.recommendations
+              ? {
+                  overallReadiness: data.resumes[0].recommendations.overallReadiness || 0,
+                  gaps: data.resumes[0].gapAnalysis || [],
+                }
+              : null,
+            targetCompanies: (data.targetCompanies || []).map((c: { id: string; name: string; industry: string; techStack: string[] }) => ({
+              id: c.id,
+              name: c.name,
+              industry: c.industry || "",
+              techStack: c.techStack || [],
+            })),
+          });
+        }
+      })
+      .catch(console.error);
+  }, [session?.user?.id]);
 
   const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setResumeFile(file);
-
-    // Simulate resume analysis (in production, this calls the Claude API)
+    setUploadError("");
     setAnalyzing(true);
-    await new Promise((resolve) => setTimeout(resolve, 2000));
 
-    setProfile({
-      resumeUploaded: true,
-      resumeAnalysis: {
-        overallReadiness: 62,
-        gaps: [
-          {
-            area: "Data Governance Experience",
-            importance: "critical",
-            recommendation:
-              "Lead or participate in a data governance initiative. Consider pursuing CDMP certification.",
-          },
-          {
-            area: "Executive Stakeholder Management",
-            importance: "critical",
-            recommendation:
-              "Seek opportunities to present data strategy to C-suite. Join cross-functional leadership committees.",
-          },
-          {
-            area: "P&L / Business Strategy",
-            importance: "important",
-            recommendation:
-              "Take on responsibilities with direct revenue/cost impact. Consider an executive MBA or finance for non-finance courses.",
-          },
-          {
-            area: "Change Management",
-            importance: "important",
-            recommendation:
-              "Lead a data culture transformation initiative. Get certified in organizational change management.",
-          },
-          {
-            area: "Vendor & Partner Management",
-            importance: "nice-to-have",
-            recommendation:
-              "Take ownership of vendor evaluation and selection for data tools/platforms.",
-          },
-        ],
-      },
-      skills: {
-        technical: 8,
-        dataGovernance: 4,
-        aiMl: 7,
-        businessAcumen: 5,
-        leadership: 5,
-        stakeholderManagement: 4,
-      },
-    });
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await fetch("/api/resume", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setUploadError(data.error || "Upload failed");
+        setAnalyzing(false);
+        return;
+      }
+
+      setProfile({
+        resumeUploaded: true,
+        resumeAnalysis: {
+          overallReadiness: data.analysis.overallReadiness,
+          gaps: data.analysis.gaps,
+        },
+        skills: data.analysis.suggestedSkillAssessment || profile.skills,
+      });
+    } catch {
+      setUploadError("Failed to upload resume. Please try again.");
+    }
     setAnalyzing(false);
   };
 
-  const addCompany = () => {
+  const saveProfile = async (updates: Record<string, unknown>) => {
+    try {
+      await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      });
+    } catch (error) {
+      console.error("Failed to save profile:", error);
+    }
+  };
+
+  const handleProfileChange = (field: string, value: string) => {
+    setProfile({ [field]: value });
+    saveProfile({ [field]: value });
+  };
+
+  const handleSkillChange = (key: string, value: number) => {
+    const newSkills = { ...profile.skills, [key]: value };
+    setProfile({ skills: newSkills });
+    saveProfile({ skillAssessment: newSkills });
+  };
+
+  const addCompany = async () => {
     if (!newCompany.name.trim()) return;
-    setProfile({
-      targetCompanies: [
-        ...profile.targetCompanies,
-        {
-          id: Date.now().toString(),
-          name: newCompany.name,
-          industry: newCompany.industry,
-          techStack: [],
-        },
-      ],
-    });
+    try {
+      const res = await fetch("/api/companies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newCompany.name, industry: newCompany.industry }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setProfile({
+          targetCompanies: [
+            ...profile.targetCompanies,
+            {
+              id: data.company.id,
+              name: data.company.name,
+              industry: data.company.industry || "",
+              techStack: data.company.techStack || [],
+            },
+          ],
+        });
+      }
+    } catch (error) {
+      console.error("Failed to add company:", error);
+    }
     setNewCompany({ name: "", industry: "" });
     setShowAddCompany(false);
   };
 
-  const removeCompany = (id: string) => {
-    setProfile({
-      targetCompanies: profile.targetCompanies.filter((c) => c.id !== id),
-    });
+  const removeCompany = async (id: string) => {
+    try {
+      await fetch(`/api/companies?id=${id}`, { method: "DELETE" });
+      setProfile({
+        targetCompanies: profile.targetCompanies.filter((c) => c.id !== id),
+      });
+    } catch (error) {
+      console.error("Failed to remove company:", error);
+    }
   };
 
   const importanceColors = {
@@ -148,16 +200,15 @@ export default function ProfilePage() {
                 <Input
                   placeholder="Your name"
                   value={profile.name}
-                  onChange={(e) => setProfile({ name: e.target.value })}
+                  onChange={(e) => handleProfileChange("name", e.target.value)}
                 />
               </div>
               <div>
                 <label className="text-sm font-medium mb-1 block">Email</label>
                 <Input
                   type="email"
-                  placeholder="your@email.com"
-                  value={profile.email}
-                  onChange={(e) => setProfile({ email: e.target.value })}
+                  value={session?.user?.email || profile.email}
+                  disabled
                 />
               </div>
               <div>
@@ -167,7 +218,7 @@ export default function ProfilePage() {
                 <Input
                   placeholder="e.g., Director of Analytics"
                   value={profile.currentRole}
-                  onChange={(e) => setProfile({ currentRole: e.target.value })}
+                  onChange={(e) => handleProfileChange("currentRole", e.target.value)}
                 />
               </div>
               <div>
@@ -176,7 +227,7 @@ export default function ProfilePage() {
                 </label>
                 <Select
                   value={profile.industry}
-                  onChange={(e) => setProfile({ industry: e.target.value })}
+                  onChange={(e) => handleProfileChange("industry", e.target.value)}
                 >
                   <option value="">Select industry</option>
                   <option value="Technology">Technology</option>
@@ -196,9 +247,7 @@ export default function ProfilePage() {
                 </label>
                 <Select
                   value={profile.targetTimeline}
-                  onChange={(e) =>
-                    setProfile({ targetTimeline: e.target.value })
-                  }
+                  onChange={(e) => handleProfileChange("targetTimeline", e.target.value)}
                 >
                   <option value="1 year">1 year</option>
                   <option value="2 years">2 years</option>
@@ -237,13 +286,16 @@ export default function ProfilePage() {
                     recommendations
                   </p>
                 </div>
-              ) : resumeFile ? (
+              ) : resumeFile || profile.resumeUploaded ? (
                 <div>
                   <CheckCircle2 className="h-8 w-8 text-[var(--success)] mx-auto mb-2" />
-                  <p className="font-medium">{resumeFile.name}</p>
+                  <p className="font-medium">{resumeFile?.name || "Resume uploaded"}</p>
                   <p className="text-sm text-[var(--muted-foreground)] mb-3">
                     Resume uploaded and analyzed
                   </p>
+                  {uploadError && (
+                    <p className="text-sm text-red-500 mb-3">{uploadError}</p>
+                  )}
                   <Button
                     variant="outline"
                     size="sm"
@@ -260,6 +312,9 @@ export default function ProfilePage() {
                     PDF, DOCX, or TXT. AI will analyze your background and
                     identify skill gaps for the CDO role.
                   </p>
+                  {uploadError && (
+                    <p className="text-sm text-red-500 mb-3">{uploadError}</p>
+                  )}
                   <Button onClick={() => fileInputRef.current?.click()}>
                     <Upload className="h-4 w-4 mr-2" />
                     Choose File
@@ -268,7 +323,6 @@ export default function ProfilePage() {
               )}
             </div>
 
-            {/* Gap Analysis Results */}
             {profile.resumeAnalysis && (
               <div className="mt-6 space-y-4">
                 <div className="flex items-center justify-between">
@@ -347,14 +401,7 @@ export default function ProfilePage() {
                     min="1"
                     max="10"
                     value={value}
-                    onChange={(e) =>
-                      setProfile({
-                        skills: {
-                          ...profile.skills,
-                          [domain.key]: parseInt(e.target.value),
-                        },
-                      })
-                    }
+                    onChange={(e) => handleSkillChange(domain.key, parseInt(e.target.value))}
                     className="w-full accent-[var(--primary)]"
                   />
                 </div>

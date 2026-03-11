@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Navigation, MobileNavigation } from "@/components/ui/navigation";
+import { Providers } from "@/components/providers";
 
 export const metadata: Metadata = {
   title: "CDO Path - Career Growth Engine",
@@ -16,15 +16,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
-        <div className="flex h-screen">
-          <aside className="hidden md:flex md:w-60 md:flex-shrink-0">
-            <Navigation />
-          </aside>
-          <main className="flex-1 overflow-auto pb-16 md:pb-0">
-            {children}
-          </main>
-          <MobileNavigation />
-        </div>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
