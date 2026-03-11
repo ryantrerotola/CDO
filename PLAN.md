@@ -147,11 +147,36 @@ Curated, searchable collection of CDO career resources:
 - O'Reilly Data & AI newsletter
 - "Leaders of Analytics" podcast
 
-### Feature 7: User Profile & Preferences
+### Feature 7: Resume Upload & Analysis
+Upload your resume (PDF/DOCX) and have AI analyze it to tailor your development plan:
+
+- **Resume Parsing** - Extract skills, experience, education, certifications from uploaded resume
+- **Gap Analysis** - AI compares your background against CDO competency requirements and identifies specific gaps
+- **Personalized Skill Priorities** - Re-weight the skill radar chart based on what you already have vs. what you need
+- **Tailored Content** - Boost relevance scoring for content that addresses your specific gaps
+- **Experience Mapping** - Map your career history to the CDO career timeline to show where you stand
+- **Action Items** - Generate specific, actionable recommendations ("Your resume shows no data governance experience -- consider leading a data quality initiative")
+- **Re-upload Support** - Update your resume as you grow; the app tracks improvement over time
+
+### Feature 8: Target Companies
+Select companies you aspire to work for and let the app guide your learning accordingly:
+
+- **Company Search & Selection** - Search and add target companies to your profile
+- **Company Intelligence** - Surface news, articles, and data strategy insights about your target companies
+- **CDO Profile Research** - Show who the current CDO is at each target company, their background, and what they prioritize
+- **Tech Stack Alignment** - Identify the data tools and platforms each company uses (Snowflake, Databricks, etc.) and recommend learning paths
+- **Culture & Values Fit** - Surface company culture information and data maturity stage
+- **Job Alert Integration** - Monitor for CDO/VP Data/Director of Data openings at target companies
+- **Tailored Content** - Prioritize industry-specific content matching your target companies' sectors
+- **Networking Suggestions** - Suggest relevant people to connect with at or around your target companies
+
+### Feature 9: User Profile & Preferences
 - Current role and career stage
 - Target timeline to CDO
 - Industry/sector (finance, healthcare, tech, etc.)
 - Skill self-assessment (initial radar chart baseline)
+- Resume upload and AI analysis
+- Target companies list
 - Content preferences (topics, sources, formats)
 - Notification preferences
 - Reading time preferences (morning, lunch, evening)

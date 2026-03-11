@@ -1,0 +1,215 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  name            String?
+  image           String?
+  currentRole     String?
+  targetRole      String    @default("Chief Data Officer")
+  targetTimeline  String?
+  industry        String?
+  skillAssessment Json?
+  preferences     Json?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  goals               Goal[]
+  contentInteractions  UserContentInteraction[]
+  careerMilestones     CareerMilestone[]
+  resumes              Resume[]
+  targetCompanies      TargetCompany[]
+  accounts             Account[]
+  sessions             Session[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Resume {
+  id            String   @id @default(cuid())
+  userId        String
+  fileName      String
+  fileUrl       String
+  parsedData    Json?
+  skillsFound   Json?
+  gapAnalysis   Json?
+  recommendations Json?
+  uploadedAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model TargetCompany {
+  id              String   @id @default(cuid())
+  userId          String
+  name            String
+  industry        String?
+  website         String?
+  dataTeamSize    String?
+  techStack       Json?
+  cdoName         String?
+  cdoBackground   String?
+  notes           String?
+  createdAt       DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum GoalType {
+  MILESTONE
+  HABIT
+  TARGET
+  PROJECT
+}
+
+enum GoalStatus {
+  ACTIVE
+  COMPLETED
+  PAUSED
+  ARCHIVED
+}
+
+enum GoalFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+  ONCE
+}
+
+model Goal {
+  id           String        @id @default(cuid())
+  userId       String
+  type         GoalType
+  title        String
+  description  String?
+  frequency    GoalFrequency @default(ONCE)
+  targetValue  Int           @default(1)
+  currentValue Int           @default(0)
+  deadline     DateTime?
+  status       GoalStatus    @default(ACTIVE)
+  parentGoalId String?
+  priority     Int           @default(0)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parentGoal Goal?      @relation("SubGoals", fields: [parentGoalId], references: [id])
+  subGoals   Goal[]     @relation("SubGoals")
+  entries    GoalEntry[]
+}
+
+model GoalEntry {
+  id        String   @id @default(cuid())
+  goalId    String
+  date      DateTime @default(now())
+  value     Int      @default(1)
+  notes     String?
+
+  goal Goal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+}
+
+enum ContentCategory {
+  DATA_STRATEGY
+  AI_ML
+  ANALYTICS
+  DATA_ETHICS
+  LEADERSHIP
+  INDUSTRY_NEWS
+  TECHNICAL
+}
+
+enum ContentType {
+  ARTICLE
+  BOOK
+  PODCAST
+  VIDEO
+  COURSE
+  REPORT
+  INTERVIEW
+}
+
+model Content {
+  id             String          @id @default(cuid())
+  title          String
+  url            String          @unique
+  source         String
+  author         String?
+  publishedAt    DateTime?
+  summary        String?
+  category       ContentCategory
+  contentType    ContentType
+  relevanceScore Float           @default(0)
+  imageUrl       String?
+  tags           Json?
+  createdAt      DateTime        @default(now())
+
+  interactions UserContentInteraction[]
+}
+
+enum InteractionType {
+  READ
+  SAVED
+  DISMISSED
+  SHARED
+}
+
+model UserContentInteraction {
+  id        String          @id @default(cuid())
+  userId    String
+  contentId String
+  action    InteractionType
+  timestamp DateTime        @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, contentId, action])
+}
+
+model CareerMilestone {
+  id            String    @id @default(cuid())
+  userId        String
+  title         String
+  description   String?
+  targetDate    DateTime?
+  completedDate DateTime?
+  order         Int       @default(0)
+  createdAt     DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
