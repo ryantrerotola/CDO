@@ -1,10 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { BookOpen, Star } from "lucide-react";
+import { BookOpen, Star, Check, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function LearningPick() {
+  const [addedToList, setAddedToList] = useState(false);
+
   return (
     <Card>
       <CardHeader>
@@ -39,9 +42,32 @@ export function LearningPick() {
               Matches your gaps
             </span>
           </div>
-          <Button variant="outline" size="sm" className="mt-3 w-full">
-            Add to Reading List
-          </Button>
+          <div className="flex gap-2 mt-3">
+            <Button
+              variant={addedToList ? "secondary" : "outline"}
+              size="sm"
+              className="flex-1"
+              onClick={() => setAddedToList(!addedToList)}
+            >
+              {addedToList ? (
+                <>
+                  <Check className="h-3.5 w-3.5 mr-1" />
+                  Added to List
+                </>
+              ) : (
+                "Add to Reading List"
+              )}
+            </Button>
+            <a
+              href="https://amazon.com/chief-data-officers-playbook"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button variant="outline" size="sm">
+                <ExternalLink className="h-3.5 w-3.5" />
+              </Button>
+            </a>
+          </div>
         </div>
       </CardContent>
     </Card>

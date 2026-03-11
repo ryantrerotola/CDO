@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useCallback } from "react";
 import {
   Card,
   CardHeader,
@@ -33,6 +34,16 @@ import {
 } from "recharts";
 import { useMemo } from "react";
 
+// Short labels for mobile, full labels for desktop
+const shortLabels: Record<string, string> = {
+  "Technical Skills": "Technical",
+  "Data Governance & Strategy": "Governance",
+  "AI/ML & Analytics": "AI/ML",
+  "Business Acumen": "Business",
+  "Leadership & Communication": "Leadership",
+  "Stakeholder Management": "Stakeholders",
+};
+
 function computeStreak(goals: { entries: { date: string; value: number }[] }[]): number {
   const allDates = new Set<string>();
   for (const goal of goals) {
@@ -46,7 +57,6 @@ function computeStreak(goals: { entries: { date: string; value: number }[] }[]):
   const today = new Date().toISOString().split("T")[0];
   const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
 
-  // Streak must include today or yesterday to be active
   if (sorted[0] !== today && sorted[0] !== yesterday) return 0;
 
   let streak = 1;
@@ -91,7 +101,6 @@ function computeHeatmapData(goals: { entries: { date: string; value: number }[] 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  // Count activities per date
   const dateCounts: Record<string, number> = {};
   for (const goal of goals) {
     for (const entry of goal.entries) {
@@ -100,9 +109,8 @@ function computeHeatmapData(goals: { entries: { date: string; value: number }[] 
     }
   }
 
-  // Build 12 weeks of data ending today
   const startOfWeek = new Date(today);
-  startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay()); // Sunday
+  startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
   const gridStart = new Date(startOfWeek);
   gridStart.setDate(gridStart.getDate() - 11 * 7);
 
@@ -112,7 +120,6 @@ function computeHeatmapData(goals: { entries: { date: string; value: number }[] 
       cellDate.setDate(cellDate.getDate() + week * 7 + day);
       const dateKey = cellDate.toISOString().split("T")[0];
       const count = dateCounts[dateKey] || 0;
-      // Cap at 4 for color scale
       data.push({ week, day, value: Math.min(count, 4) });
     }
   }
@@ -128,11 +135,50 @@ const heatmapColors = [
   "bg-green-700 dark:bg-green-300",
 ];
 
+// Custom radar axis tick that wraps text and uses short labels on mobile
+function CustomRadarTick(props: {
+  x: number;
+  y: number;
+  payload: { value: string };
+  cx: number;
+  cy: number;
+}) {
+  const { x, y, payload, cx, cy } = props;
+  const label = payload.value;
+  const short = shortLabels[label] || label;
+
+  // Position text outside the radar
+  const dx = x - cx;
+  const dy = y - cy;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  const offsetX = dist > 0 ? (dx / dist) * 12 : 0;
+  const offsetY = dist > 0 ? (dy / dist) * 12 : 0;
+
+  const anchor =
+    Math.abs(dx) < 10 ? "middle" : dx > 0 ? "start" : "end";
+
+  return (
+    <g>
+      {/* Short label always visible */}
+      <text
+        x={x + offsetX}
+        y={y + offsetY}
+        textAnchor={anchor}
+        dominantBaseline="central"
+        className="fill-[var(--foreground)]"
+        style={{ fontSize: "11px", fontWeight: 500 }}
+      >
+        {short}
+      </text>
+    </g>
+  );
+}
+
 export default function ProgressPage() {
   const { profile, goals } = useAppStore();
 
   const radarData = cdoSkillDomains.map((domain) => ({
-    domain: domain.label.replace(" & ", "\n& "),
+    domain: domain.label,
     value: profile.skills[domain.key as keyof typeof profile.skills],
     fullMark: 10,
   }));
@@ -170,12 +216,12 @@ export default function ProgressPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <RadarChart data={radarData}>
+            <ResponsiveContainer width="100%" height={320}>
+              <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="65%">
                 <PolarGrid />
                 <PolarAngleAxis
                   dataKey="domain"
-                  tick={{ fontSize: 10 }}
+                  tick={CustomRadarTick as any}
                 />
                 <PolarRadiusAxis
                   angle={30}
@@ -191,6 +237,19 @@ export default function ProgressPage() {
                 />
               </RadarChart>
             </ResponsiveContainer>
+
+            {/* Skill legend for mobile */}
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:hidden">
+              {cdoSkillDomains.map((domain) => (
+                <div key={domain.key} className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-[var(--primary)]" />
+                  <span className="text-xs text-[var(--muted-foreground)] leading-tight">
+                    {domain.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+
             <div className="mt-4 p-3 rounded-lg bg-[var(--accent)]">
               <p className="text-xs text-[var(--muted-foreground)]">
                 CDO Readiness Score
@@ -242,7 +301,7 @@ export default function ProgressPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex gap-1">
+            <div className="flex gap-1 overflow-x-auto pb-2">
               {Array.from({ length: 12 }).map((_, week) => (
                 <div key={week} className="flex flex-col gap-1">
                   {Array.from({ length: 7 }).map((_, day) => {

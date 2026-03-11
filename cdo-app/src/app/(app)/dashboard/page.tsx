@@ -3,6 +3,7 @@ import { TodaysActions } from "@/components/dashboard/todays-actions";
 import { CareerProgress } from "@/components/dashboard/career-progress";
 import { TrendingTopic } from "@/components/dashboard/trending-topic";
 import { LearningPick } from "@/components/dashboard/learning-pick";
+import { PodcastPicks } from "@/components/dashboard/podcast-picks";
 import { Upcoming } from "@/components/dashboard/upcoming";
 import { getGreeting } from "@/lib/utils";
 
@@ -23,6 +24,7 @@ export default function DashboardPage() {
         <div className="lg:col-span-2 space-y-6">
           <TopStories />
           <TrendingTopic />
+          <PodcastPicks />
         </div>
 
         {/* Right column - Actions & Progress */}

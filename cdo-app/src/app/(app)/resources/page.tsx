@@ -159,6 +159,8 @@ const podcasts = [
     description:
       "Weekly conversations with CDOs and data leaders about their journeys and strategies.",
     frequency: "Weekly",
+    url: "https://thoughtspot.com/data-chief",
+    latestEpisode: "From VP Analytics to CDO: What Changes",
   },
   {
     name: "Data Skeptic",
@@ -166,6 +168,8 @@ const podcasts = [
     description:
       "Deep dives into data science, AI, and machine learning topics with industry experts.",
     frequency: "Weekly",
+    url: "https://dataskeptic.com",
+    latestEpisode: "Responsible AI at Scale in the Enterprise",
   },
   {
     name: "Leaders of Analytics",
@@ -173,6 +177,8 @@ const podcasts = [
     description:
       "Interviews with analytics leaders about building data-driven organizations.",
     frequency: "Bi-weekly",
+    url: "https://leadersofanalytics.com",
+    latestEpisode: "AI Governance: A CDO's Practical Guide",
   },
   {
     name: "Data Engineering Podcast",
@@ -180,6 +186,8 @@ const podcasts = [
     description:
       "Technical deep dives into data infrastructure, platforms, and engineering practices.",
     frequency: "Weekly",
+    url: "https://www.dataengineeringpodcast.com",
+    latestEpisode: "Building a Data Products Operating Model",
   },
 ];
 
@@ -346,20 +354,39 @@ export default function ResourcesPage() {
       {activeTab === "podcasts" && (
         <div className="space-y-4">
           {podcasts.map((podcast) => (
-            <Card key={podcast.name}>
+            <Card key={podcast.name} className="hover:border-[var(--primary)] transition-colors">
               <CardContent className="p-5">
-                <div className="flex items-center gap-3">
+                <div className="flex items-start gap-3">
                   <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center flex-shrink-0">
                     <Headphones className="h-6 w-6 text-white" />
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-sm">{podcast.name}</h3>
-                    <p className="text-xs text-[var(--muted-foreground)]">
-                      {podcast.host} &middot; {podcast.frequency}
-                    </p>
+                  <div className="flex-1">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h3 className="font-semibold text-sm">{podcast.name}</h3>
+                        <p className="text-xs text-[var(--muted-foreground)]">
+                          {podcast.host} &middot; {podcast.frequency}
+                        </p>
+                      </div>
+                      <a
+                        href={podcast.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs px-3 py-1.5 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 transition-opacity flex items-center gap-1"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        Listen
+                      </a>
+                    </div>
                     <p className="text-xs text-[var(--muted-foreground)] leading-relaxed mt-1">
                       {podcast.description}
                     </p>
+                    {podcast.latestEpisode && (
+                      <p className="text-xs mt-2 text-[var(--foreground)]">
+                        <span className="text-[var(--muted-foreground)]">Latest: </span>
+                        <span className="font-medium">{podcast.latestEpisode}</span>
+                      </p>
+                    )}
                   </div>
                 </div>
               </CardContent>
