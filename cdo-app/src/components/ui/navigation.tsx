@@ -10,12 +10,14 @@ import {
   User,
   TrendingUp,
   BookOpen,
+  PenLine,
 } from "lucide-react";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/goals", label: "Goals", icon: Target },
   { href: "/content", label: "Content", icon: Newspaper },
+  { href: "/linkedin", label: "LinkedIn", icon: PenLine },
   { href: "/progress", label: "Progress", icon: TrendingUp },
   { href: "/resources", label: "Resources", icon: BookOpen },
   { href: "/profile", label: "Profile", icon: User },

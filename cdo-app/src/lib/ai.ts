@@ -152,3 +152,119 @@ Respond in JSON:
     message.content[0].type === "text" ? message.content[0].text : "";
   return JSON.parse(text);
 }
+
+export async function suggestLinkedInTopics(context: {
+  currentRole?: string;
+  industry?: string;
+  skills?: SkillAssessment;
+  targetCompanies?: string[];
+  recentGoals?: string[];
+}): Promise<
+  { title: string; angle: string; hook: string; category: string }[]
+> {
+  const client = getClient();
+
+  const msg = await client.messages.create({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 1500,
+    messages: [
+      {
+        role: "user",
+        content: `Suggest 6 LinkedIn post topics for a data leader aspiring to become a CDO.
+
+Their context:
+- Current role: ${context.currentRole || "Data leader"}
+- Industry: ${context.industry || "Technology"}
+- Strong skills: ${context.skills ? Object.entries(context.skills).filter(([, v]) => v >= 7).map(([k]) => k).join(", ") || "various" : "various"}
+- Target companies: ${context.targetCompanies?.join(", ") || "Fortune 500"}
+- Active goals: ${context.recentGoals?.join(", ") || "CDO career growth"}
+
+Suggest a mix of:
+- Thought leadership (share an opinion or insight)
+- Lessons learned (from experience)
+- Industry commentary (react to a trend)
+- How-to / tactical advice
+- Personal career reflection
+- Contrarian / debate-starting take
+
+Respond in JSON array:
+[{
+  "title": "Short topic title",
+  "angle": "The specific angle or argument to make (1 sentence)",
+  "hook": "A compelling opening line for the post",
+  "category": "thought-leadership|lessons-learned|industry-commentary|how-to|career-reflection|contrarian"
+}]`,
+      },
+    ],
+  });
+
+  const body = msg.content[0].type === "text" ? msg.content[0].text : "";
+  return JSON.parse(body);
+}
+
+export async function generateLinkedInPost(params: {
+  topic: string;
+  angle?: string;
+  tone: string;
+  length: string;
+  currentRole?: string;
+  industry?: string;
+  sampleWriting?: string;
+}): Promise<{ post: string; hashtags: string[]; tips: string[] }> {
+  const client = getClient();
+
+  const styleInstruction = params.sampleWriting
+    ? `The user has provided a sample of their writing style. Match their voice, sentence structure, vocabulary level, and personality:
+
+SAMPLE WRITING:
+"""
+${params.sampleWriting}
+"""
+
+Write the post to sound like THEM, not like a generic AI. Match their level of formality, use of jargon, sentence length patterns, and overall personality.`
+    : `Write in a ${params.tone} tone that feels authentic and human.`;
+
+  const lengthGuide: Record<string, string> = {
+    short: "3-5 sentences. Punchy and concise.",
+    medium: "6-10 sentences. Solid insight with some detail.",
+    long: "12-18 sentences. Deep dive with examples and a clear narrative arc.",
+  };
+
+  const msg = await client.messages.create({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 2000,
+    messages: [
+      {
+        role: "user",
+        content: `Write a LinkedIn post for a ${params.currentRole || "data leader"} in ${params.industry || "technology"}.
+
+TOPIC: ${params.topic}
+${params.angle ? `ANGLE: ${params.angle}` : ""}
+
+STYLE INSTRUCTIONS:
+${styleInstruction}
+
+LENGTH: ${lengthGuide[params.length] || lengthGuide.medium}
+
+GUIDELINES:
+- Start with a hook that stops the scroll (no "I'm excited to share...")
+- Use line breaks between paragraphs for readability
+- Include a personal insight or experience angle
+- End with a question or call-to-action to drive engagement
+- No emojis overload (1-2 max if any)
+- Sound like a real human, not a corporate bot
+- Focus on data leadership, CDO topics, or career growth
+
+Respond in JSON:
+{
+  "post": "The full LinkedIn post text with line breaks as \\n",
+  "hashtags": ["3-5 relevant hashtags without the # symbol"],
+  "tips": ["2-3 tips for making this post perform well"]
+}`,
+      },
+    ],
+  });
+
+  const result = msg.content[0].type === "text" ? msg.content[0].text : "";
+  return JSON.parse(result);
+}
