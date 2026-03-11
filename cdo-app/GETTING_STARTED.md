@@ -1,45 +1,60 @@
 # CDO Path - Quick Start Guide
 
-## Prerequisites
-- Node.js 18+
-- PostgreSQL database (local or cloud)
-- Anthropic API key (for AI features)
+## 1. Create a Supabase Project
 
-## Setup
+1. Go to [supabase.com](https://supabase.com) and create a new project
+2. Once created, go to **Project Settings > Database**
+3. Click **Connection string** and grab both URLs:
+   - **Transaction mode** (port 6543) → this is your `DATABASE_URL`
+   - **Session mode** (port 5432) → this is your `DIRECT_URL`
+
+## 2. Set Up Locally
 
 ```bash
 cd cdo-app
 npm install
-```
-
-Create a `.env` file from the example:
-
-```bash
 cp .env.example .env
 ```
 
-Edit `.env` with your values:
+Edit `.env` with your Supabase URLs:
 
 ```
-DATABASE_URL="postgresql://user:password@localhost:5432/cdo_app"
-NEXTAUTH_URL="http://localhost:3000"
-NEXTAUTH_SECRET="generate-a-random-secret-here"
+DATABASE_URL="postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres?pgbouncer=true"
+DIRECT_URL="postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres"
+NEXTAUTH_SECRET="any-random-string"
 ANTHROPIC_API_KEY="sk-ant-..."
 ```
 
-Push the database schema:
+Push the schema to Supabase:
 
 ```bash
 npm run db:push
 ```
 
-Start the dev server:
+Run locally:
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+## 3. Deploy to Vercel
+
+1. Push your repo to GitHub
+2. Go to [vercel.com](https://vercel.com) and click **New Project**
+3. Import your GitHub repo, set the **Root Directory** to `cdo-app`
+4. Add these **Environment Variables** in the Vercel dashboard:
+
+| Variable | Value |
+|----------|-------|
+| `DATABASE_URL` | Your Supabase transaction mode URL |
+| `DIRECT_URL` | Your Supabase session mode URL |
+| `NEXTAUTH_URL` | Your Vercel domain (e.g. `https://cdo-app.vercel.app`) |
+| `NEXTAUTH_SECRET` | A random secret (run `openssl rand -base64 32`) |
+| `ANTHROPIC_API_KEY` | Your Anthropic API key |
+
+5. Click **Deploy**
+
+That's it. Vercel will run `npm run build` which triggers `prisma generate` automatically via the `postinstall` script.
 
 ## Pages
 
@@ -63,6 +78,5 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Notes
 
-- AI features (resume analysis, LinkedIn posts, topic suggestions) require a valid `ANTHROPIC_API_KEY`
-- The app works without the API key — AI features will show errors but everything else functions normally
-- Content feed ships with 12 pre-seeded items; the `/api/content` POST endpoint fetches fresh content from RSS feeds
+- AI features require a valid `ANTHROPIC_API_KEY` — everything else works without it
+- Content feed ships with 12 pre-seeded items; `/api/content` POST fetches fresh content from RSS feeds
