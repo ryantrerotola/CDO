@@ -3,29 +3,25 @@ import RSSParser from "rss-parser";
 const parser = new RSSParser();
 
 export const RSS_FEEDS = [
-  // Leadership & Strategy (free/open)
-  { url: "https://www.mckinsey.com/rss/insights", source: "McKinsey", category: "DATA_STRATEGY" },
-  { url: "https://mitsloan.mit.edu/ideas-made-to-matter/rss.xml", source: "MIT Sloan", category: "LEADERSHIP" },
-
-  // Data & Analytics (free/open)
+  // Data-specific publications (always on-topic)
   { url: "https://feeds.feedburner.com/kdnuggets-data-mining-analytics", source: "KDnuggets", category: "AI_ML" },
   { url: "https://dataconomy.com/feed/", source: "Dataconomy", category: "DATA_STRATEGY" },
   { url: "https://www.datanami.com/feed/", source: "Datanami", category: "ANALYTICS" },
-  { url: "https://blog.google/technology/ai/rss/", source: "Google AI Blog", category: "AI_ML" },
 
-  // Technical / Engineering (free/open company blogs)
-  { url: "https://netflixtechblog.com/feed", source: "Netflix Tech Blog", category: "TECHNICAL" },
-  { url: "https://engineering.atspotify.com/feed/", source: "Spotify Engineering", category: "TECHNICAL" },
+  // Cloud data platforms (CDO-relevant technical content)
   { url: "https://aws.amazon.com/blogs/big-data/feed/", source: "AWS Big Data", category: "TECHNICAL" },
   { url: "https://cloud.google.com/blog/products/data-analytics/rss", source: "Google Cloud Data", category: "TECHNICAL" },
 
-  // Governance, Ethics & Regulation (free/open)
+  // Governance, Ethics & Regulation
   { url: "https://iapp.org/rss/daily-dashboard/", source: "IAPP", category: "DATA_ETHICS" },
 
-  // Industry News (free/open, CDO-relevant)
-  { url: "https://www.informationweek.com/rss.xml", source: "InformationWeek", category: "INDUSTRY_NEWS" },
+  // Leadership & Strategy (filtered for relevance)
+  { url: "https://www.mckinsey.com/rss/insights", source: "McKinsey", category: "LEADERSHIP" },
+  { url: "https://mitsloan.mit.edu/ideas-made-to-matter/rss.xml", source: "MIT Sloan", category: "LEADERSHIP" },
+
+  // AI/ML news (filtered for data leader relevance)
+  { url: "https://blog.google/technology/ai/rss/", source: "Google AI Blog", category: "AI_ML" },
   { url: "https://venturebeat.com/category/ai/feed/", source: "VentureBeat AI", category: "AI_ML" },
-  { url: "https://thenewstack.io/blog/feed/", source: "The New Stack", category: "TECHNICAL" },
 ];
 
 export interface FeedItem {
@@ -38,38 +34,41 @@ export interface FeedItem {
   category: string;
 }
 
-// Keywords that indicate an article is relevant to CDOs / data leaders
-const CDO_RELEVANCE_KEYWORDS = [
-  "data", "analytics", "AI", "artificial intelligence", "machine learning",
-  "governance", "privacy", "CDO", "chief data officer", "data strategy",
-  "data management", "data quality", "metadata", "data catalog", "data mesh",
-  "data fabric", "data lakehouse", "data warehouse", "data lake", "data platform",
-  "deep learning", "neural network", "LLM", "generative AI", "GenAI", "NLP",
-  "business intelligence", "dashboard", "visualization", "ETL", "pipeline",
-  "GDPR", "compliance", "regulation", "AI Act", "responsible AI", "bias",
-  "cloud", "database", "SQL", "Spark", "Databricks", "Snowflake",
-  "digital transformation", "data-driven", "algorithm", "automation",
-];
-
-// Filter out stock market / finance noise that isn't relevant to CDOs
-const IRRELEVANT_KEYWORDS = [
-  "stock price", "stock market", "shares fell", "shares rose", "earnings per share",
-  "trading", "wall street", "S&P 500", "nasdaq", "dow jones", "bull market",
-  "bear market", "hedge fund", "dividend", "forex", "cryptocurrency price",
-  "bitcoin price", "crypto trading", "market cap", "IPO valuation",
-  "quarterly earnings", "profit margin", "revenue forecast",
+// Compound phrases that specifically indicate CDO / data leader relevance.
+// Single generic words like "data", "AI", "cloud" are intentionally excluded
+// because they match electricity bills, proxy servers, weather articles, etc.
+const CDO_RELEVANCE_PHRASES = [
+  // Data leadership
+  "chief data officer", "CDO", "data leader", "data executive", "data officer",
+  "data strategy", "data governance", "data management", "data quality",
+  "data-driven", "data culture", "data literacy", "data organization",
+  // Data architecture & platforms
+  "data mesh", "data fabric", "data lakehouse", "data warehouse", "data lake",
+  "data platform", "data pipeline", "data engineering", "data infrastructure",
+  "data catalog", "data lineage", "metadata management", "master data",
+  "data integration", "data architecture", "big data", "data science",
+  "data analytics", "data visualization",
+  // AI/ML (compound terms only)
+  "artificial intelligence", "machine learning", "deep learning", "generative AI",
+  "GenAI", "large language model", "LLM", "AI strategy", "AI governance",
+  "responsible AI", "AI ethics", "enterprise AI", "AI regulation",
+  "natural language processing", "computer vision",
+  // Analytics & BI
+  "business intelligence", "predictive analytics", "advanced analytics",
+  "analytics platform", "analytics strategy",
+  // Governance & compliance
+  "data privacy", "data protection", "GDPR", "AI Act", "data regulation",
+  "data compliance", "data ethics", "algorithmic bias", "algorithmic fairness",
+  // Specific platforms (CDOs evaluate these)
+  "Databricks", "Snowflake", "dbt", "Apache Spark", "Apache Kafka",
+  "Tableau", "Power BI", "Looker",
+  // Digital transformation
+  "digital transformation", "data transformation", "cloud migration",
 ];
 
 function isRelevantToCDO(title: string, content: string | undefined): boolean {
   const text = `${title} ${content || ""}`.toLowerCase();
-
-  // Reject if it matches irrelevant finance/stock keywords
-  const irrelevantHits = IRRELEVANT_KEYWORDS.filter((kw) => text.includes(kw.toLowerCase())).length;
-  if (irrelevantHits >= 2) return false;
-
-  // Accept if it matches CDO-relevant keywords
-  const relevantHits = CDO_RELEVANCE_KEYWORDS.filter((kw) => text.includes(kw.toLowerCase())).length;
-  return relevantHits >= 1;
+  return CDO_RELEVANCE_PHRASES.some((phrase) => text.includes(phrase.toLowerCase()));
 }
 
 // Keyword-based category detection to override feed defaults when the content clearly fits better
