@@ -14,8 +14,23 @@ async function extractText(file: File): Promise<string> {
     return result.text;
   }
 
+  if (name.endsWith(".docx") || name.endsWith(".doc")) {
+    const mammoth = await import("mammoth");
+    const result = await mammoth.extractRawText({ buffer });
+    return result.value;
+  }
+
   // For .txt and other text-based formats, read as UTF-8
   return buffer.toString("utf-8");
+}
+
+function looksLikeBinaryGarbage(text: string): boolean {
+  // Count non-printable characters (excluding common whitespace)
+  const nonPrintable = text.slice(0, 2000).split("").filter((c) => {
+    const code = c.charCodeAt(0);
+    return code < 32 && code !== 9 && code !== 10 && code !== 13;
+  }).length;
+  return nonPrintable > text.slice(0, 2000).length * 0.1;
 }
 
 export async function POST(request: NextRequest) {
@@ -43,9 +58,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (!text.trim()) {
+  if (!text.trim() || looksLikeBinaryGarbage(text)) {
     return NextResponse.json(
-      { error: "The uploaded file appears to be empty or could not be read. Please try a different file." },
+      { error: "Could not extract readable text from your file. Please upload a PDF, DOCX, or plain text (.txt) file." },
       { status: 400 }
     );
   }
