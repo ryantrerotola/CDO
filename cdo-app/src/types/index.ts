@@ -36,6 +36,9 @@ export interface ResumeAnalysis {
   }[];
   overallReadiness: number;
   suggestedSkillAssessment: SkillAssessment;
+  strengthsSummary: string;
+  needsWorkSummary: string;
+  missingSummary: string;
 }
 
 export interface CompanyIntelligence {

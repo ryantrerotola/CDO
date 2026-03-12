@@ -91,6 +91,9 @@ export async function POST(request: NextRequest) {
           experience: analysis.experience,
           education: analysis.education,
           certifications: analysis.certifications,
+          strengthsSummary: analysis.strengthsSummary,
+          needsWorkSummary: analysis.needsWorkSummary,
+          missingSummary: analysis.missingSummary,
         })),
       },
     });

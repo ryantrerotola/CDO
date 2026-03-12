@@ -26,11 +26,7 @@ import {
   CheckCircle2,
   Lightbulb,
   Trash2,
-  TrendingUp,
   XCircle,
-  Briefcase,
-  GraduationCap,
-  Award,
 } from "lucide-react";
 
 export default function ProfilePage() {
@@ -69,6 +65,9 @@ export default function ProfilePage() {
                   gaps: resume.gapAnalysis || [],
                   overallReadiness: resume.recommendations.overallReadiness || 0,
                   suggestedSkillAssessment: resume.recommendations.suggestedSkillAssessment || data.skillAssessment || profile.skills,
+                  strengthsSummary: resume.recommendations.strengthsSummary || "",
+                  needsWorkSummary: resume.recommendations.needsWorkSummary || "",
+                  missingSummary: resume.recommendations.missingSummary || "",
                 }
               : null,
             targetCompanies: (data.targetCompanies || []).map((c: { id: string; name: string; industry: string; techStack: string[] }) => ({
@@ -349,144 +348,88 @@ export default function ProfilePage() {
                 <Progress value={profile.resumeAnalysis.overallReadiness} />
 
                 {/* On Track */}
-                <div>
-                  <h3 className="font-semibold flex items-center gap-2 mb-3">
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                <div className="p-4 rounded-lg bg-green-50 border border-green-200">
+                  <h3 className="font-semibold flex items-center gap-2 mb-2">
+                    <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" />
                     What&apos;s Good / On Track
                   </h3>
-                  <div className="space-y-2">
-                    {profile.resumeAnalysis.experience
-                      .filter((e) => e.relevance === "high")
-                      .length > 0 && (
-                      <div className="p-3 rounded-lg bg-green-50 border border-green-200">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Briefcase className="h-4 w-4 text-green-600" />
-                          <span className="text-sm font-medium">Relevant Experience</span>
-                        </div>
-                        <ul className="text-sm text-[var(--muted-foreground)] ml-6 space-y-1">
-                          {profile.resumeAnalysis.experience
-                            .filter((e) => e.relevance === "high")
-                            .map((exp) => (
-                              <li key={`${exp.title}-${exp.company}`}>
-                                {exp.title} at {exp.company} ({exp.duration})
-                              </li>
-                            ))}
-                        </ul>
-                      </div>
-                    )}
-                    {Object.entries(profile.resumeAnalysis.suggestedSkillAssessment)
-                      .filter(([, v]) => v >= 7).length > 0 && (
-                      <div className="p-3 rounded-lg bg-green-50 border border-green-200">
-                        <div className="flex items-center gap-2 mb-1">
-                          <TrendingUp className="h-4 w-4 text-green-600" />
-                          <span className="text-sm font-medium">Strong Skills (7+/10)</span>
-                        </div>
-                        <div className="flex flex-wrap gap-1 ml-6">
-                          {Object.entries(profile.resumeAnalysis.suggestedSkillAssessment)
-                            .filter(([, v]) => v >= 7)
-                            .map(([k]) => (
-                              <Badge key={k} variant="success">{k}</Badge>
-                            ))}
-                        </div>
-                      </div>
-                    )}
-                    {profile.resumeAnalysis.certifications.length > 0 && (
-                      <div className="p-3 rounded-lg bg-green-50 border border-green-200">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Award className="h-4 w-4 text-green-600" />
-                          <span className="text-sm font-medium">Certifications</span>
-                        </div>
-                        <div className="flex flex-wrap gap-1 ml-6">
-                          {profile.resumeAnalysis.certifications.map((cert) => (
-                            <Badge key={cert} variant="outline">{cert}</Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {profile.resumeAnalysis.education.length > 0 && (
-                      <div className="p-3 rounded-lg bg-green-50 border border-green-200">
-                        <div className="flex items-center gap-2 mb-1">
-                          <GraduationCap className="h-4 w-4 text-green-600" />
-                          <span className="text-sm font-medium">Education</span>
-                        </div>
-                        <ul className="text-sm text-[var(--muted-foreground)] ml-6 space-y-1">
-                          {profile.resumeAnalysis.education.map((edu) => (
-                            <li key={`${edu.degree}-${edu.institution}`}>
-                              {edu.degree} - {edu.institution} ({edu.year})
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
+                  <p className="text-sm leading-relaxed">
+                    {profile.resumeAnalysis.strengthsSummary || "Upload a new resume to get an updated assessment."}
+                  </p>
                 </div>
 
                 {/* Needs Work */}
-                {profile.resumeAnalysis.gaps.filter((g) => g.importance === "important").length > 0 && (
-                  <div>
-                    <h3 className="font-semibold flex items-center gap-2 mb-3">
-                      <AlertTriangle className="h-4 w-4 text-orange-500" />
-                      What Needs Work
-                    </h3>
-                    <div className="space-y-2">
+                <div className="p-4 rounded-lg bg-orange-50 border border-orange-200">
+                  <h3 className="font-semibold flex items-center gap-2 mb-2">
+                    <AlertTriangle className="h-4 w-4 text-orange-500 flex-shrink-0" />
+                    What Needs Work
+                  </h3>
+                  <p className="text-sm leading-relaxed mb-3">
+                    {profile.resumeAnalysis.needsWorkSummary || "Nothing flagged here — great work!"}
+                  </p>
+                  {profile.resumeAnalysis.gaps.filter((g) => g.importance === "important").length > 0 && (
+                    <ul className="space-y-2">
                       {profile.resumeAnalysis.gaps
                         .filter((g) => g.importance === "important")
                         .map((gap) => (
-                          <div key={gap.area} className="p-3 rounded-lg bg-orange-50 border border-orange-200">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-sm font-medium">{gap.area}</span>
-                              <Badge variant="warning">important</Badge>
+                          <li key={gap.area} className="flex gap-2 text-sm">
+                            <span className="text-orange-500 mt-0.5">&#8226;</span>
+                            <div>
+                              <span className="font-medium">{gap.area}:</span>{" "}
+                              <span className="text-[var(--muted-foreground)]">{gap.recommendation}</span>
                             </div>
-                            <p className="text-sm text-[var(--muted-foreground)]">{gap.recommendation}</p>
-                          </div>
+                          </li>
                         ))}
-                    </div>
-                  </div>
-                )}
+                    </ul>
+                  )}
+                </div>
 
                 {/* Missing */}
-                {profile.resumeAnalysis.gaps.filter((g) => g.importance === "critical").length > 0 && (
-                  <div>
-                    <h3 className="font-semibold flex items-center gap-2 mb-3">
-                      <XCircle className="h-4 w-4 text-red-500" />
-                      What&apos;s Missing
-                    </h3>
-                    <div className="space-y-2">
+                <div className="p-4 rounded-lg bg-red-50 border border-red-200">
+                  <h3 className="font-semibold flex items-center gap-2 mb-2">
+                    <XCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                    What&apos;s Missing
+                  </h3>
+                  <p className="text-sm leading-relaxed mb-3">
+                    {profile.resumeAnalysis.missingSummary || "No critical gaps found — you're well-positioned!"}
+                  </p>
+                  {profile.resumeAnalysis.gaps.filter((g) => g.importance === "critical").length > 0 && (
+                    <ul className="space-y-2">
                       {profile.resumeAnalysis.gaps
                         .filter((g) => g.importance === "critical")
                         .map((gap) => (
-                          <div key={gap.area} className="p-3 rounded-lg bg-red-50 border border-red-200">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-sm font-medium">{gap.area}</span>
-                              <Badge variant="destructive">critical</Badge>
+                          <li key={gap.area} className="flex gap-2 text-sm">
+                            <span className="text-red-500 mt-0.5">&#8226;</span>
+                            <div>
+                              <span className="font-medium">{gap.area}:</span>{" "}
+                              <span className="text-[var(--muted-foreground)]">{gap.recommendation}</span>
                             </div>
-                            <p className="text-sm text-[var(--muted-foreground)]">{gap.recommendation}</p>
-                          </div>
+                          </li>
                         ))}
-                    </div>
-                  </div>
-                )}
+                    </ul>
+                  )}
+                </div>
 
                 {/* Nice to have */}
                 {profile.resumeAnalysis.gaps.filter((g) => g.importance === "nice-to-have").length > 0 && (
-                  <div>
-                    <h3 className="font-semibold flex items-center gap-2 mb-3">
-                      <Lightbulb className="h-4 w-4 text-blue-500" />
+                  <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
+                    <h3 className="font-semibold flex items-center gap-2 mb-2">
+                      <Lightbulb className="h-4 w-4 text-blue-500 flex-shrink-0" />
                       Nice to Have
                     </h3>
-                    <div className="space-y-2">
+                    <ul className="space-y-2">
                       {profile.resumeAnalysis.gaps
                         .filter((g) => g.importance === "nice-to-have")
                         .map((gap) => (
-                          <div key={gap.area} className="p-3 rounded-lg bg-blue-50 border border-blue-200">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-sm font-medium">{gap.area}</span>
-                              <Badge variant="outline">nice-to-have</Badge>
+                          <li key={gap.area} className="flex gap-2 text-sm">
+                            <span className="text-blue-500 mt-0.5">&#8226;</span>
+                            <div>
+                              <span className="font-medium">{gap.area}:</span>{" "}
+                              <span className="text-[var(--muted-foreground)]">{gap.recommendation}</span>
                             </div>
-                            <p className="text-sm text-[var(--muted-foreground)]">{gap.recommendation}</p>
-                          </div>
+                          </li>
                         ))}
-                    </div>
+                    </ul>
                   </div>
                 )}
               </div>

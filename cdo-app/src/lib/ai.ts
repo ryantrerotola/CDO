@@ -52,7 +52,7 @@ export async function analyzeResume(
 
   const message = await client.messages.create({
     model: "claude-sonnet-4-20250514",
-    max_tokens: 2000,
+    max_tokens: 3000,
     messages: [
       {
         role: "user",
@@ -78,8 +78,16 @@ Respond in JSON matching this structure:
     "businessAcumen": 5,
     "leadership": 3,
     "stakeholderManagement": 4
-  }
+  },
+  "strengthsSummary": "...",
+  "needsWorkSummary": "...",
+  "missingSummary": "..."
 }
+
+IMPORTANT fields:
+- "strengthsSummary": Write 2-3 sentences in second person ("You have...") explaining what this person is doing well and why it positions them for a CDO role. Connect their experience, skills, and education into a coherent narrative. Be specific — reference their actual roles, companies, and skills.
+- "needsWorkSummary": Write 2-3 sentences in second person explaining the areas that need development. Tie them together — e.g., if they need both governance and stakeholder management, explain how those connect. Be encouraging but honest.
+- "missingSummary": Write 2-3 sentences in second person about critical gaps that must be addressed. Explain why these are blocking and what the path forward looks like. If there are no critical gaps, write a brief encouraging note.
 
 The suggestedSkillAssessment values should be 1-10 based on what the resume demonstrates.
 The overallReadiness should be 0-100 representing how ready they are for a CDO role.`,
