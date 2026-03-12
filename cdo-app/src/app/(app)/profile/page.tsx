@@ -348,89 +348,80 @@ export default function ProfilePage() {
                 <Progress value={profile.resumeAnalysis.overallReadiness} />
 
                 {/* On Track */}
-                <div className="p-4 rounded-lg bg-green-50 border border-green-200">
-                  <h3 className="font-semibold flex items-center gap-2 mb-2">
-                    <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" />
+                <section className="p-4 rounded-lg border border-green-300 dark:border-green-800 bg-green-50 dark:bg-green-950/40">
+                  <h3 className="font-semibold flex items-center gap-2 text-green-700 dark:text-green-400 mb-3">
+                    <CheckCircle2 className="h-5 w-5 flex-shrink-0" />
                     What&apos;s Good / On Track
                   </h3>
-                  <p className="text-sm leading-relaxed">
+                  <p className="text-sm leading-relaxed text-green-900 dark:text-green-100">
                     {profile.resumeAnalysis.strengthsSummary || "Upload a new resume to get an updated assessment."}
                   </p>
-                </div>
+                </section>
 
                 {/* Needs Work */}
-                <div className="p-4 rounded-lg bg-orange-50 border border-orange-200">
-                  <h3 className="font-semibold flex items-center gap-2 mb-2">
-                    <AlertTriangle className="h-4 w-4 text-orange-500 flex-shrink-0" />
+                <section className="p-4 rounded-lg border border-orange-300 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/40">
+                  <h3 className="font-semibold flex items-center gap-2 text-orange-700 dark:text-orange-400 mb-3">
+                    <AlertTriangle className="h-5 w-5 flex-shrink-0" />
                     What Needs Work
                   </h3>
-                  <p className="text-sm leading-relaxed mb-3">
+                  <p className="text-sm leading-relaxed text-orange-900 dark:text-orange-100 mb-3">
                     {profile.resumeAnalysis.needsWorkSummary || "Nothing flagged here — great work!"}
                   </p>
                   {profile.resumeAnalysis.gaps.filter((g) => g.importance === "important").length > 0 && (
-                    <ul className="space-y-2">
+                    <ul className="space-y-2.5 mt-3 pt-3 border-t border-orange-200 dark:border-orange-800">
                       {profile.resumeAnalysis.gaps
                         .filter((g) => g.importance === "important")
                         .map((gap) => (
-                          <li key={gap.area} className="flex gap-2 text-sm">
-                            <span className="text-orange-500 mt-0.5">&#8226;</span>
-                            <div>
-                              <span className="font-medium">{gap.area}:</span>{" "}
-                              <span className="text-[var(--muted-foreground)]">{gap.recommendation}</span>
-                            </div>
+                          <li key={gap.area} className="text-sm text-orange-900 dark:text-orange-100">
+                            <span className="font-semibold">{gap.area}</span>
+                            <p className="mt-0.5 text-orange-800 dark:text-orange-200/80">{gap.recommendation}</p>
                           </li>
                         ))}
                     </ul>
                   )}
-                </div>
+                </section>
 
                 {/* Missing */}
-                <div className="p-4 rounded-lg bg-red-50 border border-red-200">
-                  <h3 className="font-semibold flex items-center gap-2 mb-2">
-                    <XCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                <section className="p-4 rounded-lg border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/40">
+                  <h3 className="font-semibold flex items-center gap-2 text-red-700 dark:text-red-400 mb-3">
+                    <XCircle className="h-5 w-5 flex-shrink-0" />
                     What&apos;s Missing
                   </h3>
-                  <p className="text-sm leading-relaxed mb-3">
+                  <p className="text-sm leading-relaxed text-red-900 dark:text-red-100 mb-3">
                     {profile.resumeAnalysis.missingSummary || "No critical gaps found — you're well-positioned!"}
                   </p>
                   {profile.resumeAnalysis.gaps.filter((g) => g.importance === "critical").length > 0 && (
-                    <ul className="space-y-2">
+                    <ul className="space-y-2.5 mt-3 pt-3 border-t border-red-200 dark:border-red-800">
                       {profile.resumeAnalysis.gaps
                         .filter((g) => g.importance === "critical")
                         .map((gap) => (
-                          <li key={gap.area} className="flex gap-2 text-sm">
-                            <span className="text-red-500 mt-0.5">&#8226;</span>
-                            <div>
-                              <span className="font-medium">{gap.area}:</span>{" "}
-                              <span className="text-[var(--muted-foreground)]">{gap.recommendation}</span>
-                            </div>
+                          <li key={gap.area} className="text-sm text-red-900 dark:text-red-100">
+                            <span className="font-semibold">{gap.area}</span>
+                            <p className="mt-0.5 text-red-800 dark:text-red-200/80">{gap.recommendation}</p>
                           </li>
                         ))}
                     </ul>
                   )}
-                </div>
+                </section>
 
                 {/* Nice to have */}
                 {profile.resumeAnalysis.gaps.filter((g) => g.importance === "nice-to-have").length > 0 && (
-                  <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
-                    <h3 className="font-semibold flex items-center gap-2 mb-2">
-                      <Lightbulb className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                  <section className="p-4 rounded-lg border border-blue-300 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40">
+                    <h3 className="font-semibold flex items-center gap-2 text-blue-700 dark:text-blue-400 mb-3">
+                      <Lightbulb className="h-5 w-5 flex-shrink-0" />
                       Nice to Have
                     </h3>
-                    <ul className="space-y-2">
+                    <ul className="space-y-2.5">
                       {profile.resumeAnalysis.gaps
                         .filter((g) => g.importance === "nice-to-have")
                         .map((gap) => (
-                          <li key={gap.area} className="flex gap-2 text-sm">
-                            <span className="text-blue-500 mt-0.5">&#8226;</span>
-                            <div>
-                              <span className="font-medium">{gap.area}:</span>{" "}
-                              <span className="text-[var(--muted-foreground)]">{gap.recommendation}</span>
-                            </div>
+                          <li key={gap.area} className="text-sm text-blue-900 dark:text-blue-100">
+                            <span className="font-semibold">{gap.area}</span>
+                            <p className="mt-0.5 text-blue-800 dark:text-blue-200/80">{gap.recommendation}</p>
                           </li>
                         ))}
                     </ul>
-                  </div>
+                  </section>
                 )}
               </div>
             )}
