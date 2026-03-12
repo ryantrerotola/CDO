@@ -3,6 +3,21 @@ import { prisma } from "@/lib/db";
 import { analyzeResume } from "@/lib/ai";
 import { getAuthUserId } from "@/lib/api-auth";
 
+async function extractText(file: File): Promise<string> {
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const name = file.name.toLowerCase();
+
+  if (name.endsWith(".pdf")) {
+    const { PDFParse } = await import("pdf-parse");
+    const parser = new PDFParse({ data: buffer });
+    const result = await parser.getText();
+    return result.text;
+  }
+
+  // For .txt and other text-based formats, read as UTF-8
+  return buffer.toString("utf-8");
+}
+
 export async function POST(request: NextRequest) {
   const userId = await getAuthUserId();
   if (userId instanceof NextResponse) return userId;
@@ -17,7 +32,23 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const text = await file.text();
+  let text: string;
+  try {
+    text = await extractText(file);
+  } catch (error) {
+    console.error("Failed to extract text from file:", error);
+    return NextResponse.json(
+      { error: "Could not read the uploaded file. Please try a PDF or TXT file." },
+      { status: 400 }
+    );
+  }
+
+  if (!text.trim()) {
+    return NextResponse.json(
+      { error: "The uploaded file appears to be empty or could not be read. Please try a different file." },
+      { status: 400 }
+    );
+  }
 
   let analysis;
   try {
@@ -30,35 +61,45 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const resume = await prisma.resume.create({
-    data: {
-      userId,
-      fileName: file.name,
-      fileUrl: `/uploads/${file.name}`,
-      parsedData: { text: text.substring(0, 10000) },
-      skillsFound: JSON.parse(JSON.stringify(analysis.skills)),
-      gapAnalysis: JSON.parse(JSON.stringify(analysis.gaps)),
-      recommendations: JSON.parse(JSON.stringify({
-        suggestedSkillAssessment: analysis.suggestedSkillAssessment,
-        overallReadiness: analysis.overallReadiness,
-        experience: analysis.experience,
-        education: analysis.education,
-        certifications: analysis.certifications,
-      })),
-    },
-  });
+  try {
+    const resume = await prisma.resume.create({
+      data: {
+        userId,
+        fileName: file.name,
+        fileUrl: `/uploads/${file.name}`,
+        parsedData: { text: text.substring(0, 10000) },
+        skillsFound: JSON.parse(JSON.stringify(analysis.skills)),
+        gapAnalysis: JSON.parse(JSON.stringify(analysis.gaps)),
+        recommendations: JSON.parse(JSON.stringify({
+          suggestedSkillAssessment: analysis.suggestedSkillAssessment,
+          overallReadiness: analysis.overallReadiness,
+          experience: analysis.experience,
+          education: analysis.education,
+          certifications: analysis.certifications,
+        })),
+      },
+    });
 
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      skillAssessment: JSON.parse(JSON.stringify(analysis.suggestedSkillAssessment)),
-    },
-  });
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        skillAssessment: JSON.parse(JSON.stringify(analysis.suggestedSkillAssessment)),
+      },
+    });
 
-  return NextResponse.json({
-    resume,
-    analysis,
-  });
+    return NextResponse.json({
+      resume,
+      analysis,
+    });
+  } catch (error) {
+    console.error("Failed to save resume to database:", error);
+    // Still return the analysis even if DB save fails
+    return NextResponse.json({
+      resume: null,
+      analysis,
+      warning: "Analysis completed but failed to save to database. Your results are shown below.",
+    });
+  }
 }
 
 export async function GET() {

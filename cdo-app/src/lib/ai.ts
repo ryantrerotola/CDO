@@ -8,6 +8,13 @@ const getClient = () => {
   return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 };
 
+function parseJsonResponse(text: string): unknown {
+  // Strip markdown code fences if present (```json ... ``` or ``` ... ```)
+  const fenceMatch = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/);
+  const cleaned = fenceMatch ? fenceMatch[1] : text.trim();
+  return JSON.parse(cleaned);
+}
+
 export async function summarizeArticle(
   title: string,
   content: string
@@ -35,7 +42,7 @@ Respond in JSON with:
 
   const text =
     message.content[0].type === "text" ? message.content[0].text : "";
-  return JSON.parse(text);
+  return parseJsonResponse(text) as { summary: string; category: string; whyItMatters: string };
 }
 
 export async function analyzeResume(
@@ -82,7 +89,7 @@ The overallReadiness should be 0-100 representing how ready they are for a CDO r
 
   const text =
     message.content[0].type === "text" ? message.content[0].text : "";
-  return JSON.parse(text);
+  return parseJsonResponse(text) as ResumeAnalysis;
 }
 
 export async function getCompanyIntelligence(
@@ -117,7 +124,7 @@ Respond in JSON:
 
   const text =
     message.content[0].type === "text" ? message.content[0].text : "";
-  return JSON.parse(text);
+  return parseJsonResponse(text) as { techStack: string[]; dataMaturity: string; cdoInfo: string; learningRecommendations: string[] };
 }
 
 export async function generateDailyInsight(
@@ -150,7 +157,7 @@ Respond in JSON:
 
   const text =
     message.content[0].type === "text" ? message.content[0].text : "";
-  return JSON.parse(text);
+  return parseJsonResponse(text) as { insight: string; recommendation: string };
 }
 
 export async function suggestLinkedInTopics(context: {
@@ -199,7 +206,7 @@ Respond in JSON array:
   });
 
   const body = msg.content[0].type === "text" ? msg.content[0].text : "";
-  return JSON.parse(body);
+  return parseJsonResponse(body) as { title: string; angle: string; hook: string; category: string }[];
 }
 
 export async function generateLinkedInPost(params: {
@@ -266,5 +273,5 @@ Respond in JSON:
   });
 
   const result = msg.content[0].type === "text" ? msg.content[0].text : "";
-  return JSON.parse(result);
+  return parseJsonResponse(result) as { post: string; hashtags: string[]; tips: string[] };
 }
