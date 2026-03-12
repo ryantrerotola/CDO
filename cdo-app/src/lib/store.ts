@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { SkillAssessment } from "@/types";
+import type { SkillAssessment, ResumeAnalysis } from "@/types";
 
 interface UserProfile {
   name: string;
@@ -15,10 +15,7 @@ interface UserProfile {
     techStack: string[];
   }[];
   resumeUploaded: boolean;
-  resumeAnalysis: {
-    overallReadiness: number;
-    gaps: { area: string; importance: string; recommendation: string }[];
-  } | null;
+  resumeAnalysis: ResumeAnalysis | null;
 }
 
 interface Goal {

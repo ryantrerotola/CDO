@@ -14,6 +14,8 @@ import { Input, Select } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { useAppStore } from "@/lib/store";
 import { cdoSkillDomains } from "@/data/seed-content";
+import { ResumeResultsModal } from "@/components/resume-results-modal";
+import type { ResumeAnalysis } from "@/types";
 import {
   User,
   Upload,
@@ -24,6 +26,11 @@ import {
   CheckCircle2,
   Lightbulb,
   Trash2,
+  TrendingUp,
+  XCircle,
+  Briefcase,
+  GraduationCap,
+  Award,
 } from "lucide-react";
 
 export default function ProfilePage() {
@@ -35,6 +42,7 @@ export default function ProfilePage() {
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  const [showResultsModal, setShowResultsModal] = useState(false);
 
   useEffect(() => {
     if (!session?.user?.id) return;
@@ -42,6 +50,8 @@ export default function ProfilePage() {
       .then((res) => res.json())
       .then((data) => {
         if (data && !data.error) {
+          const resume = data.resumes?.[0];
+          const hasResume = data.resumes?.length > 0;
           setProfile({
             name: data.name || "",
             email: data.email || "",
@@ -49,11 +59,16 @@ export default function ProfilePage() {
             industry: data.industry || "",
             targetTimeline: data.targetTimeline || "3 years",
             skills: data.skillAssessment || profile.skills,
-            resumeUploaded: data.resumes?.length > 0,
-            resumeAnalysis: data.resumes?.[0]?.recommendations
+            resumeUploaded: hasResume,
+            resumeAnalysis: hasResume && resume?.recommendations
               ? {
-                  overallReadiness: data.resumes[0].recommendations.overallReadiness || 0,
-                  gaps: data.resumes[0].gapAnalysis || [],
+                  skills: resume.skillsFound || [],
+                  experience: resume.recommendations.experience || [],
+                  education: resume.recommendations.education || [],
+                  certifications: resume.recommendations.certifications || [],
+                  gaps: resume.gapAnalysis || [],
+                  overallReadiness: resume.recommendations.overallReadiness || 0,
+                  suggestedSkillAssessment: resume.recommendations.suggestedSkillAssessment || data.skillAssessment || profile.skills,
                 }
               : null,
             targetCompanies: (data.targetCompanies || []).map((c: { id: string; name: string; industry: string; techStack: string[] }) => ({
@@ -91,14 +106,13 @@ export default function ProfilePage() {
         return;
       }
 
+      const fullAnalysis: ResumeAnalysis = data.analysis;
       setProfile({
         resumeUploaded: true,
-        resumeAnalysis: {
-          overallReadiness: data.analysis.overallReadiness,
-          gaps: data.analysis.gaps,
-        },
-        skills: data.analysis.suggestedSkillAssessment || profile.skills,
+        resumeAnalysis: fullAnalysis,
+        skills: fullAnalysis.suggestedSkillAssessment || profile.skills,
       });
+      setShowResultsModal(true);
     } catch {
       setUploadError("Failed to upload resume. Please try again.");
     }
@@ -324,7 +338,8 @@ export default function ProfilePage() {
             </div>
 
             {profile.resumeAnalysis && (
-              <div className="mt-6 space-y-4">
+              <div className="mt-6 space-y-5">
+                {/* Readiness Score */}
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold">CDO Readiness Score</h3>
                   <span className="text-2xl font-bold text-[var(--primary)]">
@@ -333,39 +348,147 @@ export default function ProfilePage() {
                 </div>
                 <Progress value={profile.resumeAnalysis.overallReadiness} />
 
-                <h3 className="font-semibold flex items-center gap-2 mt-6">
-                  <Lightbulb className="h-4 w-4 text-[var(--warning)]" />
-                  Identified Gaps & Recommendations
-                </h3>
-                <div className="space-y-3">
-                  {profile.resumeAnalysis.gaps.map((gap) => (
-                    <div
-                      key={gap.area}
-                      className="p-4 rounded-lg border bg-[var(--accent)]"
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        <AlertTriangle
-                          className={`h-4 w-4 ${
-                            gap.importance === "critical"
-                              ? "text-red-500"
-                              : gap.importance === "important"
-                                ? "text-orange-500"
-                                : "text-blue-500"
-                          }`}
-                        />
-                        <span className="font-medium text-sm">{gap.area}</span>
-                        <span
-                          className={`text-xs px-2 py-0.5 rounded-full ${importanceColors[gap.importance as keyof typeof importanceColors]}`}
-                        >
-                          {gap.importance}
-                        </span>
+                {/* On Track */}
+                <div>
+                  <h3 className="font-semibold flex items-center gap-2 mb-3">
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    What&apos;s Good / On Track
+                  </h3>
+                  <div className="space-y-2">
+                    {profile.resumeAnalysis.experience
+                      .filter((e) => e.relevance === "high")
+                      .length > 0 && (
+                      <div className="p-3 rounded-lg bg-green-50 border border-green-200">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Briefcase className="h-4 w-4 text-green-600" />
+                          <span className="text-sm font-medium">Relevant Experience</span>
+                        </div>
+                        <ul className="text-sm text-[var(--muted-foreground)] ml-6 space-y-1">
+                          {profile.resumeAnalysis.experience
+                            .filter((e) => e.relevance === "high")
+                            .map((exp) => (
+                              <li key={`${exp.title}-${exp.company}`}>
+                                {exp.title} at {exp.company} ({exp.duration})
+                              </li>
+                            ))}
+                        </ul>
                       </div>
-                      <p className="text-sm text-[var(--muted-foreground)] ml-6">
-                        {gap.recommendation}
-                      </p>
-                    </div>
-                  ))}
+                    )}
+                    {Object.entries(profile.resumeAnalysis.suggestedSkillAssessment)
+                      .filter(([, v]) => v >= 7).length > 0 && (
+                      <div className="p-3 rounded-lg bg-green-50 border border-green-200">
+                        <div className="flex items-center gap-2 mb-1">
+                          <TrendingUp className="h-4 w-4 text-green-600" />
+                          <span className="text-sm font-medium">Strong Skills (7+/10)</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1 ml-6">
+                          {Object.entries(profile.resumeAnalysis.suggestedSkillAssessment)
+                            .filter(([, v]) => v >= 7)
+                            .map(([k]) => (
+                              <Badge key={k} variant="success">{k}</Badge>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+                    {profile.resumeAnalysis.certifications.length > 0 && (
+                      <div className="p-3 rounded-lg bg-green-50 border border-green-200">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Award className="h-4 w-4 text-green-600" />
+                          <span className="text-sm font-medium">Certifications</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1 ml-6">
+                          {profile.resumeAnalysis.certifications.map((cert) => (
+                            <Badge key={cert} variant="outline">{cert}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {profile.resumeAnalysis.education.length > 0 && (
+                      <div className="p-3 rounded-lg bg-green-50 border border-green-200">
+                        <div className="flex items-center gap-2 mb-1">
+                          <GraduationCap className="h-4 w-4 text-green-600" />
+                          <span className="text-sm font-medium">Education</span>
+                        </div>
+                        <ul className="text-sm text-[var(--muted-foreground)] ml-6 space-y-1">
+                          {profile.resumeAnalysis.education.map((edu) => (
+                            <li key={`${edu.degree}-${edu.institution}`}>
+                              {edu.degree} - {edu.institution} ({edu.year})
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
                 </div>
+
+                {/* Needs Work */}
+                {profile.resumeAnalysis.gaps.filter((g) => g.importance === "important").length > 0 && (
+                  <div>
+                    <h3 className="font-semibold flex items-center gap-2 mb-3">
+                      <AlertTriangle className="h-4 w-4 text-orange-500" />
+                      What Needs Work
+                    </h3>
+                    <div className="space-y-2">
+                      {profile.resumeAnalysis.gaps
+                        .filter((g) => g.importance === "important")
+                        .map((gap) => (
+                          <div key={gap.area} className="p-3 rounded-lg bg-orange-50 border border-orange-200">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-sm font-medium">{gap.area}</span>
+                              <Badge variant="warning">important</Badge>
+                            </div>
+                            <p className="text-sm text-[var(--muted-foreground)]">{gap.recommendation}</p>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Missing */}
+                {profile.resumeAnalysis.gaps.filter((g) => g.importance === "critical").length > 0 && (
+                  <div>
+                    <h3 className="font-semibold flex items-center gap-2 mb-3">
+                      <XCircle className="h-4 w-4 text-red-500" />
+                      What&apos;s Missing
+                    </h3>
+                    <div className="space-y-2">
+                      {profile.resumeAnalysis.gaps
+                        .filter((g) => g.importance === "critical")
+                        .map((gap) => (
+                          <div key={gap.area} className="p-3 rounded-lg bg-red-50 border border-red-200">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-sm font-medium">{gap.area}</span>
+                              <Badge variant="destructive">critical</Badge>
+                            </div>
+                            <p className="text-sm text-[var(--muted-foreground)]">{gap.recommendation}</p>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Nice to have */}
+                {profile.resumeAnalysis.gaps.filter((g) => g.importance === "nice-to-have").length > 0 && (
+                  <div>
+                    <h3 className="font-semibold flex items-center gap-2 mb-3">
+                      <Lightbulb className="h-4 w-4 text-blue-500" />
+                      Nice to Have
+                    </h3>
+                    <div className="space-y-2">
+                      {profile.resumeAnalysis.gaps
+                        .filter((g) => g.importance === "nice-to-have")
+                        .map((gap) => (
+                          <div key={gap.area} className="p-3 rounded-lg bg-blue-50 border border-blue-200">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-sm font-medium">{gap.area}</span>
+                              <Badge variant="outline">nice-to-have</Badge>
+                            </div>
+                            <p className="text-sm text-[var(--muted-foreground)]">{gap.recommendation}</p>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
@@ -517,6 +640,14 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
       </div>
+
+      {profile.resumeAnalysis && (
+        <ResumeResultsModal
+          open={showResultsModal}
+          onClose={() => setShowResultsModal(false)}
+          analysis={profile.resumeAnalysis}
+        />
+      )}
     </div>
   );
 }
