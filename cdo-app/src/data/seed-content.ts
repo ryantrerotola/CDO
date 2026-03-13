@@ -10,6 +10,7 @@ export const seedContent: {
   contentType: ContentType;
   tags: string[];
 }[] = [
+  // ── CDO Role & Career Path ───────────────────────────────────────
   {
     title: "The Evolving Role of the Chief Data Officer in 2026",
     url: "https://hbr.org/2026/01/the-evolving-role-of-the-cdo",
@@ -22,15 +23,34 @@ export const seedContent: {
     tags: ["CDO role", "leadership", "strategy"],
   },
   {
-    title: "Data Mesh Architecture: A Practical Guide",
-    url: "https://martinfowler.com/articles/data-mesh-guide",
-    source: "Martin Fowler",
-    author: "Zhamak Dehghani",
+    title: "CDO vs CTO vs CIO: Understanding the C-Suite Data Roles",
+    url: "https://hbr.org/2025/08/cdo-cto-cio-data-roles-explained",
+    source: "Harvard Business Review",
     summary:
-      "Data mesh decentralizes data ownership to domain teams while maintaining federated governance. This guide covers the four principles: domain ownership, data as a product, self-serve platform, and federated governance.",
-    category: "TECHNICAL",
+      "A clear breakdown of how the CDO, CTO, and CIO roles differ and overlap. Covers reporting structures, KPIs, and how successful organizations define boundaries between these roles.",
+    category: "LEADERSHIP",
     contentType: "ARTICLE",
-    tags: ["data mesh", "architecture", "governance"],
+    tags: ["CDO role", "CTO", "CIO", "org structure"],
+  },
+  {
+    title: "How to Transition from Data Director to Chief Data Officer",
+    url: "https://mitsloan.mit.edu/ideas-made-to-matter/transition-to-cdo",
+    source: "MIT Sloan",
+    summary:
+      "Practical career advice for senior data professionals aspiring to the CDO role. Covers the skill gaps to close, the visibility to build, and how to make the business case for your promotion.",
+    category: "LEADERSHIP",
+    contentType: "ARTICLE",
+    tags: ["career path", "promotion", "CDO transition"],
+  },
+  {
+    title: "The First 100 Days as a New CDO",
+    url: "https://gartner.com/en/articles/first-100-days-cdo",
+    source: "Gartner",
+    summary:
+      "A structured playbook for new CDOs: assess the current state, build stakeholder relationships, identify quick wins, and establish a data strategy roadmap in your first three months.",
+    category: "LEADERSHIP",
+    contentType: "ARTICLE",
+    tags: ["new CDO", "onboarding", "quick wins"],
   },
   {
     title: "Building a Data-Driven Culture: Lessons from Fortune 500 CDOs",
@@ -42,6 +62,135 @@ export const seedContent: {
     contentType: "INTERVIEW",
     tags: ["culture", "change management", "leadership"],
   },
+
+  // ── Data Strategy & Governance ───────────────────────────────────
+  {
+    title: "How to Build a Data Strategy from Scratch",
+    url: "https://mckinsey.com/capabilities/mckinsey-digital/our-insights/how-to-build-a-data-strategy",
+    source: "McKinsey Digital",
+    summary:
+      "Step-by-step guide to creating an enterprise data strategy. Covers business alignment, data inventory, architecture choices, governance framework, and a realistic 12-month implementation roadmap.",
+    category: "DATA_STRATEGY",
+    contentType: "ARTICLE",
+    tags: ["data strategy", "roadmap", "implementation"],
+  },
+  {
+    title: "Data Governance Framework: A Step-by-Step Guide",
+    url: "https://dataversity.net/data-governance-framework-step-by-step-guide",
+    source: "Dataversity",
+    summary:
+      "How to design and implement a data governance program. Covers roles (data stewards, data owners), policies, data quality rules, metadata standards, and measuring governance maturity.",
+    category: "DATA_STRATEGY",
+    contentType: "ARTICLE",
+    tags: ["data governance", "framework", "stewardship"],
+  },
+  {
+    title: "The DMBOK Guide: What Every Data Leader Should Know",
+    url: "https://dama.org/content/dmbok-overview",
+    source: "DAMA International",
+    summary:
+      "An overview of DAMA's Data Management Body of Knowledge — the 14 knowledge areas every CDO should understand, from data governance and quality to reference data and metadata management.",
+    category: "DATA_STRATEGY",
+    contentType: "ARTICLE",
+    tags: ["DMBOK", "DAMA", "knowledge areas", "framework"],
+  },
+  {
+    title: "Measuring Data ROI: Metrics That Matter for CDOs",
+    url: "https://hbr.org/2025/11/measuring-data-roi-metrics-for-cdos",
+    source: "Harvard Business Review",
+    summary:
+      "How to quantify the business value of data initiatives. Covers cost avoidance, revenue attribution, time-to-insight, data quality scores, and presenting data ROI to the board.",
+    category: "DATA_STRATEGY",
+    contentType: "ARTICLE",
+    tags: ["ROI", "metrics", "business value", "board presentation"],
+  },
+
+  // ── Data Architecture & Platforms ────────────────────────────────
+  {
+    title: "Data Mesh Architecture: A Practical Guide",
+    url: "https://martinfowler.com/articles/data-mesh-guide",
+    source: "Martin Fowler",
+    author: "Zhamak Dehghani",
+    summary:
+      "Data mesh decentralizes data ownership to domain teams while maintaining federated governance. This guide covers the four principles: domain ownership, data as a product, self-serve platform, and federated governance.",
+    category: "TECHNICAL",
+    contentType: "ARTICLE",
+    tags: ["data mesh", "architecture", "governance"],
+  },
+  {
+    title: "Snowflake vs Databricks: The Modern Data Platform Decision",
+    url: "https://towardsdatascience.com/snowflake-vs-databricks-2026",
+    source: "Towards Data Science",
+    summary:
+      "A technical comparison of the two dominant data platforms. Covers lakehouse architecture, cost models, governance features, and when to choose each platform.",
+    category: "TECHNICAL",
+    contentType: "ARTICLE",
+    tags: ["Snowflake", "Databricks", "data platform", "lakehouse"],
+  },
+  {
+    title: "Data Lakehouse Architecture Explained for Decision Makers",
+    url: "https://databricks.com/blog/data-lakehouse-architecture-explained",
+    source: "Databricks",
+    summary:
+      "What a data lakehouse is, how it differs from data warehouses and data lakes, and when it's the right architectural choice. Written for leaders evaluating platform investments, not engineers.",
+    category: "TECHNICAL",
+    contentType: "ARTICLE",
+    tags: ["lakehouse", "architecture", "data platform", "decision guide"],
+  },
+  {
+    title: "Building a Modern Data Stack: A CDO's Buying Guide",
+    url: "https://atlan.com/modern-data-stack-guide",
+    source: "Atlan",
+    summary:
+      "An overview of the modern data stack — ingestion, transformation, warehousing, orchestration, catalog, and observability. Helps CDOs evaluate vendors and build a coherent platform strategy.",
+    category: "TECHNICAL",
+    contentType: "ARTICLE",
+    tags: ["modern data stack", "vendor evaluation", "data platform"],
+  },
+
+  // ── AI/ML Strategy for Data Leaders ──────────────────────────────
+  {
+    title: "AI Governance Frameworks: A Comparative Analysis",
+    url: "https://nist.gov/ai-governance-frameworks-comparison",
+    source: "NIST",
+    summary:
+      "Comparison of major AI governance frameworks including NIST AI RMF, EU AI Act, and ISO 42001. Practical guidance for CDOs implementing responsible AI programs.",
+    category: "AI_ML",
+    contentType: "REPORT",
+    tags: ["AI governance", "NIST", "frameworks", "responsible AI"],
+  },
+  {
+    title: "Generative AI Strategy for Enterprise Data Leaders",
+    url: "https://mckinsey.com/capabilities/quantumblack/our-insights/generative-ai-enterprise-strategy",
+    source: "McKinsey Digital",
+    summary:
+      "How CDOs should approach generative AI: identifying use cases, ensuring data readiness, managing hallucination risks, building vs buying, and governing AI outputs across the enterprise.",
+    category: "AI_ML",
+    contentType: "ARTICLE",
+    tags: ["generative AI", "strategy", "enterprise", "use cases"],
+  },
+  {
+    title: "Building an AI-Ready Data Foundation",
+    url: "https://hbr.org/2025/09/building-ai-ready-data-foundation",
+    source: "Harvard Business Review",
+    summary:
+      "AI models are only as good as the data behind them. This guide covers the data quality, cataloging, lineage, and governance practices CDOs must establish before investing in AI.",
+    category: "AI_ML",
+    contentType: "ARTICLE",
+    tags: ["AI readiness", "data quality", "data foundation"],
+  },
+  {
+    title: "How to Present AI Risks to the Board",
+    url: "https://mitsloan.mit.edu/ideas-made-to-matter/presenting-ai-risks-to-board",
+    source: "MIT Sloan",
+    summary:
+      "A guide for CDOs and data leaders on communicating AI risks to non-technical board members. Covers framing techniques, risk matrices, and translating technical concerns into business language.",
+    category: "AI_ML",
+    contentType: "ARTICLE",
+    tags: ["board presentation", "AI risk", "executive communication"],
+  },
+
+  // ── Data Ethics, Privacy & Regulation ────────────────────────────
   {
     title: "The EU AI Act: What Data Leaders Need to Know",
     url: "https://iapp.org/eu-ai-act-data-leaders",
@@ -52,6 +201,82 @@ export const seedContent: {
     contentType: "ARTICLE",
     tags: ["AI Act", "regulation", "compliance", "EU"],
   },
+  {
+    title: "Data Privacy for CDOs: GDPR, CCPA, and Beyond",
+    url: "https://iapp.org/resources/data-privacy-cdo-guide",
+    source: "IAPP",
+    summary:
+      "A practical guide to privacy regulations for data leaders. Covers GDPR, CCPA, emerging global regulations, and how to build a privacy-by-design culture in your data organization.",
+    category: "DATA_ETHICS",
+    contentType: "ARTICLE",
+    tags: ["GDPR", "CCPA", "privacy", "compliance"],
+  },
+  {
+    title: "Responsible AI: Building Fairness Into Your Data Pipelines",
+    url: "https://dataconomy.com/responsible-ai-fairness-data-pipelines",
+    source: "Dataconomy",
+    summary:
+      "How bias enters data pipelines and what CDOs can do about it. Covers bias auditing, fairness metrics, documentation standards, and building review processes for high-stakes AI systems.",
+    category: "DATA_ETHICS",
+    contentType: "ARTICLE",
+    tags: ["responsible AI", "bias", "fairness", "data pipelines"],
+  },
+
+  // ── Analytics & Business Intelligence ────────────────────────────
+  {
+    title: "Analytics Maturity Model: Where Does Your Organization Stand?",
+    url: "https://gartner.com/en/documents/analytics-maturity-model",
+    source: "Gartner",
+    summary:
+      "The five stages of analytics maturity from descriptive to prescriptive. Includes a self-assessment framework CDOs can use to benchmark their organization and plan the next level of capability.",
+    category: "ANALYTICS",
+    contentType: "ARTICLE",
+    tags: ["analytics maturity", "assessment", "benchmarking"],
+  },
+  {
+    title: "Self-Service Analytics: Empowering Business Users Without Losing Control",
+    url: "https://thoughtspot.com/data-chief/self-service-analytics-governance",
+    source: "ThoughtSpot",
+    summary:
+      "How to enable self-service analytics while maintaining data quality and governance. Covers semantic layers, certified datasets, guardrails, and training programs for business users.",
+    category: "ANALYTICS",
+    contentType: "ARTICLE",
+    tags: ["self-service", "analytics", "governance", "business users"],
+  },
+
+  // ── Leadership & Stakeholder Management ──────────────────────────
+  {
+    title: "Selling Data Strategy to the C-Suite: A CDO's Persuasion Guide",
+    url: "https://hbr.org/2025/06/selling-data-strategy-c-suite",
+    source: "Harvard Business Review",
+    summary:
+      "How to get executive buy-in for data initiatives. Covers aligning to business priorities, speaking the language of revenue and risk, building a coalition of allies, and handling common objections.",
+    category: "LEADERSHIP",
+    contentType: "ARTICLE",
+    tags: ["executive buy-in", "stakeholder management", "persuasion"],
+  },
+  {
+    title: "Building and Scaling a High-Performing Data Team",
+    url: "https://mckinsey.com/building-scaling-data-team",
+    source: "McKinsey Digital",
+    summary:
+      "How to structure, hire, and grow a data organization. Covers centralized vs federated models, key roles to hire first, retention strategies, and building a compelling employer brand for data talent.",
+    category: "LEADERSHIP",
+    contentType: "ARTICLE",
+    tags: ["data team", "hiring", "org design", "talent"],
+  },
+  {
+    title: "Change Management for Data Leaders",
+    url: "https://prosci.com/resources/articles/change-management-data-leaders",
+    source: "Prosci",
+    summary:
+      "Data initiatives fail because of people, not technology. Learn the ADKAR model applied to data transformation, how to identify resistance early, and build a change champion network.",
+    category: "LEADERSHIP",
+    contentType: "ARTICLE",
+    tags: ["change management", "ADKAR", "transformation"],
+  },
+
+  // ── Books (Essential CDO Reading List) ───────────────────────────
   {
     title: "Chief Data Officer's Playbook",
     url: "https://amazon.com/chief-data-officers-playbook",
@@ -86,25 +311,40 @@ export const seedContent: {
     tags: ["analytics", "competitive advantage", "DELTA"],
   },
   {
-    title: "The Data Chief Podcast: Leading Data Transformation",
-    url: "https://thoughtspot.com/data-chief/leading-transformation",
-    source: "ThoughtSpot",
+    title: "Data Governance: How to Design, Deploy and Sustain",
+    url: "https://amazon.com/data-governance-john-ladley",
+    source: "Book",
+    author: "John Ladley",
     summary:
-      "Weekly conversations with CDOs and data leaders about their journeys, challenges, and strategies for driving data transformation in large organizations.",
-    category: "LEADERSHIP",
-    contentType: "PODCAST",
-    tags: ["podcast", "CDO interviews", "transformation"],
+      "Practical handbook for implementing enterprise data governance programs. Covers organizational design, stewardship models, metrics, and sustaining governance over time.",
+    category: "DATA_STRATEGY",
+    contentType: "BOOK",
+    tags: ["governance", "implementation", "stewardship"],
   },
   {
-    title: "Snowflake vs Databricks: The Modern Data Platform Decision",
-    url: "https://towardsdatascience.com/snowflake-vs-databricks-2026",
-    source: "Towards Data Science",
+    title: "Designing Data-Intensive Applications",
+    url: "https://amazon.com/designing-data-intensive-applications-kleppmann",
+    source: "Book",
+    author: "Martin Kleppmann",
     summary:
-      "A technical comparison of the two dominant data platforms. Covers lakehouse architecture, cost models, governance features, and when to choose each platform.",
+      "The technical bible for understanding data systems. Covers replication, partitioning, batch/stream processing, and consistency models. Essential for CDOs who want deep architectural fluency.",
     category: "TECHNICAL",
-    contentType: "ARTICLE",
-    tags: ["Snowflake", "Databricks", "data platform", "lakehouse"],
+    contentType: "BOOK",
+    tags: ["data systems", "architecture", "distributed systems"],
   },
+  {
+    title: "The AI-First Company: How Intelligent Machines Enable Smarter Strategy",
+    url: "https://amazon.com/ai-first-company-ash-fontana",
+    source: "Book",
+    author: "Ash Fontana",
+    summary:
+      "How to build organizations where AI is embedded in core operations. Covers data moats, feedback loops, and the operating model changes CDOs must drive to make AI a competitive advantage.",
+    category: "AI_ML",
+    contentType: "BOOK",
+    tags: ["AI strategy", "data moats", "competitive advantage"],
+  },
+
+  // ── Certifications & Courses ─────────────────────────────────────
   {
     title: "CDMP Certification: Complete Study Guide",
     url: "https://dama.org/cdmp-study-guide",
@@ -116,25 +356,36 @@ export const seedContent: {
     tags: ["CDMP", "certification", "DAMA", "DMBOK"],
   },
   {
-    title: "AI Governance Frameworks: A Comparative Analysis",
-    url: "https://nist.gov/ai-governance-frameworks-comparison",
-    source: "NIST",
+    title: "Data Engineering with Google Cloud Professional Certificate",
+    url: "https://cloud.google.com/certification/data-engineer",
+    source: "Google Cloud",
     summary:
-      "Comparison of major AI governance frameworks including NIST AI RMF, EU AI Act, and ISO 42001. Practical guidance for CDOs implementing responsible AI programs.",
-    category: "AI_ML",
-    contentType: "REPORT",
-    tags: ["AI governance", "NIST", "frameworks", "responsible AI"],
+      "Professional certification covering BigQuery, Dataflow, Pub/Sub, and Cloud Composer. Validates the technical data platform skills CDOs need to evaluate architectural decisions credibly.",
+    category: "TECHNICAL",
+    contentType: "COURSE",
+    tags: ["certification", "Google Cloud", "data engineering"],
+  },
+
+  // ── Podcasts ─────────────────────────────────────────────────────
+  {
+    title: "The Data Chief Podcast: Leading Data Transformation",
+    url: "https://thoughtspot.com/data-chief/leading-transformation",
+    source: "ThoughtSpot",
+    summary:
+      "Weekly conversations with CDOs and data leaders about their journeys, challenges, and strategies for driving data transformation in large organizations.",
+    category: "LEADERSHIP",
+    contentType: "PODCAST",
+    tags: ["podcast", "CDO interviews", "transformation"],
   },
   {
-    title: "Data Governance: How to Design, Deploy and Sustain",
-    url: "https://amazon.com/data-governance-john-ladley",
-    source: "Book",
-    author: "John Ladley",
+    title: "Data Skeptic: Understanding ML Concepts for Leaders",
+    url: "https://dataskeptic.com/podcast",
+    source: "Data Skeptic",
     summary:
-      "Practical handbook for implementing enterprise data governance programs. Covers organizational design, stewardship models, metrics, and sustaining governance over time.",
-    category: "DATA_STRATEGY",
-    contentType: "BOOK",
-    tags: ["governance", "implementation", "stewardship"],
+      "Approachable explanations of machine learning, statistics, and AI concepts. Ideal for data leaders who want to deepen their technical understanding without getting lost in code.",
+    category: "AI_ML",
+    contentType: "PODCAST",
+    tags: ["podcast", "machine learning", "AI concepts"],
   },
 ];
 

@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
-  Newspaper,
+  BookOpen,
   ExternalLink,
   Bookmark,
   BookmarkCheck,
@@ -116,8 +116,8 @@ export function TopStories() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Newspaper className="h-5 w-5 text-[var(--primary)]" />
-          Top Stories
+          <BookOpen className="h-5 w-5 text-[var(--primary)]" />
+          Recommended Reading
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -232,11 +232,11 @@ export function TopStories() {
 
         {!loading && visibleStories.length === 0 && (
           <div className="text-center py-8 text-[var(--muted-foreground)]">
-            <Newspaper className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <BookOpen className="h-8 w-8 mx-auto mb-2 opacity-50" />
             <p className="text-sm">
               {stories.length === 0
-                ? "No stories yet. Content refreshes daily at 7am UTC."
-                : "All stories dismissed"}
+                ? "No content yet. New recommendations appear daily."
+                : "All items dismissed"}
             </p>
             {dismissedStories.size > 0 && (
               <button

@@ -1,22 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { fetchAllFeeds, fetchNewsAPI } from "@/lib/content";
+import { seedContent } from "@/data/seed-content";
 
-// All seed content URLs — never purged during refresh
-const SEED_URLS = [
-  "https://hbr.org/2026/01/the-evolving-role-of-the-cdo",
-  "https://martinfowler.com/articles/data-mesh-guide",
-  "https://mckinsey.com/data-driven-culture-2026",
-  "https://iapp.org/eu-ai-act-data-leaders",
-  "https://amazon.com/chief-data-officers-playbook",
-  "https://amazon.com/data-strategy-bernard-marr",
-  "https://amazon.com/competing-analytics-davenport",
-  "https://amazon.com/data-governance-john-ladley",
-  "https://thoughtspot.com/data-chief/leading-transformation",
-  "https://nist.gov/ai-governance-frameworks-comparison",
-  "https://towardsdatascience.com/snowflake-vs-databricks-2026",
-  "https://dama.org/cdmp-study-guide",
-];
+// Derive seed URLs dynamically so they stay in sync with seed-content.ts
+const SEED_URLS = seedContent.map((item) => item.url);
 
 export async function GET(request: NextRequest) {
   // Verify cron secret in production
@@ -29,11 +17,11 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Step 1: Purge old non-seed articles so stale/irrelevant content doesn't linger
+    // Step 1: Purge old non-seed live feed articles
     const deleted = await prisma.content.deleteMany({
       where: {
         url: { notIn: SEED_URLS },
-        contentType: "ARTICLE",
+        relevanceScore: { lt: 1.0 },
       },
     });
 
@@ -70,6 +58,7 @@ export async function GET(request: NextRequest) {
               | "TECHNICAL",
             contentType: "ARTICLE",
             summary: item.content?.substring(0, 500),
+            relevanceScore: 0.5,
           },
         });
         created++;
