@@ -111,12 +111,10 @@ export function TopStories() {
 
   const toggleRead = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    setReadStories((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    const story = stories.find((s) => s.id === id);
+    if (story && !readStories.has(id)) {
+      markAsReadAndTrack(id, story.contentType);
+    }
   };
 
   const dismissStory = (e: React.MouseEvent, id: string) => {

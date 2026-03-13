@@ -266,12 +266,10 @@ export default function ContentPage() {
 
   const toggleRead = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    setReadItems((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    const item = content.find((c) => c.id === id);
+    if (item && !readItems.has(id)) {
+      markAsReadAndTrack(id, item.contentType);
+    }
   };
 
   const dismissItem = (e: React.MouseEvent, id: string) => {
