@@ -282,7 +282,10 @@ export default function ProfilePage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="border-2 border-dashed border-[var(--border)] rounded-lg p-8 text-center">
+            <div
+              className="border-2 border-dashed border-[var(--border)] rounded-lg p-6 md:p-8 text-center"
+              onClick={() => !analyzing && !(resumeFile || profile.resumeUploaded) && fileInputRef.current?.click()}
+            >
               <input
                 ref={fileInputRef}
                 type="file"
@@ -314,21 +317,22 @@ export default function ProfilePage() {
                     size="sm"
                     onClick={() => fileInputRef.current?.click()}
                   >
+                    <Upload className="h-4 w-4 mr-2" />
                     Upload New Resume
                   </Button>
                 </div>
               ) : (
-                <div>
-                  <Upload className="h-8 w-8 mx-auto mb-2 text-[var(--muted-foreground)]" />
-                  <p className="font-medium">Upload your resume</p>
-                  <p className="text-sm text-[var(--muted-foreground)] mb-3">
-                    PDF, DOCX, or TXT. AI will analyze your background and
+                <div className="cursor-pointer active:scale-[0.98] transition-transform">
+                  <Upload className="h-10 w-10 mx-auto mb-3 text-[var(--primary)]" />
+                  <p className="font-medium text-base">Tap to upload your resume</p>
+                  <p className="text-sm text-[var(--muted-foreground)] mb-4">
+                    PDF, DOCX, or TXT — AI will analyze your background and
                     identify skill gaps for the CDO role.
                   </p>
                   {uploadError && (
                     <p className="text-sm text-red-500 mb-3">{uploadError}</p>
                   )}
-                  <Button onClick={() => fileInputRef.current?.click()}>
+                  <Button size="lg" className="w-full sm:w-auto" onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}>
                     <Upload className="h-4 w-4 mr-2" />
                     Choose File
                   </Button>

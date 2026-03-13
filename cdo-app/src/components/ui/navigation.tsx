@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -13,17 +14,22 @@ import {
   BookOpen,
   PenLine,
   LogOut,
+  MoreHorizontal,
+  X,
 } from "lucide-react";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/goals", label: "Goals", icon: Target },
   { href: "/content", label: "Content", icon: Newspaper },
-  { href: "/linkedin", label: "LinkedIn", icon: PenLine },
   { href: "/progress", label: "Progress", icon: TrendingUp },
-  { href: "/resources", label: "Resources", icon: BookOpen },
   { href: "/profile", label: "Profile", icon: User },
+  { href: "/linkedin", label: "LinkedIn", icon: PenLine },
+  { href: "/resources", label: "Resources", icon: BookOpen },
 ];
+
+// Mobile bottom nav shows first 4 + a "More" menu
+const MOBILE_NAV_COUNT = 4;
 
 export function Navigation() {
   const pathname = usePathname();
@@ -92,30 +98,88 @@ export function Navigation() {
 
 export function MobileNavigation() {
   const pathname = usePathname();
+  const [moreOpen, setMoreOpen] = useState(false);
+
+  const primaryItems = navItems.slice(0, MOBILE_NAV_COUNT);
+  const moreItems = navItems.slice(MOBILE_NAV_COUNT);
+  const isMoreActive = moreItems.some((item) => pathname === item.href);
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-[var(--card)] border-t border-[var(--border)] z-50 md:hidden">
-      <div className="flex justify-around py-2">
-        {navItems.slice(0, 5).map((item) => {
-          const Icon = item.icon;
-          const isActive = pathname === item.href;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex flex-col items-center gap-1 px-2 py-1 text-xs",
-                isActive
-                  ? "text-[var(--primary)]"
-                  : "text-[var(--muted-foreground)]"
-              )}
-            >
-              <Icon className="h-5 w-5" />
-              {item.label}
-            </Link>
-          );
-        })}
-      </div>
-    </nav>
+    <>
+      {/* "More" flyout menu */}
+      {moreOpen && (
+        <div className="fixed inset-0 z-50 md:hidden" onClick={() => setMoreOpen(false)}>
+          <div className="absolute inset-0 bg-black/30" />
+          <div
+            className="absolute bottom-16 right-2 w-48 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-lg overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--border)]">
+              <span className="text-xs font-medium text-[var(--muted-foreground)]">More</span>
+              <button onClick={() => setMoreOpen(false)} className="p-1">
+                <X className="h-4 w-4 text-[var(--muted-foreground)]" />
+              </button>
+            </div>
+            {moreItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMoreOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors",
+                    isActive
+                      ? "bg-[var(--primary)] text-[var(--primary-foreground)]"
+                      : "text-[var(--muted-foreground)] hover:bg-[var(--accent)]"
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Bottom navigation bar */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-[var(--card)] border-t border-[var(--border)] z-40 md:hidden">
+        <div className="flex justify-around py-2">
+          {primaryItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "flex flex-col items-center gap-1 px-2 py-1 text-xs",
+                  isActive
+                    ? "text-[var(--primary)]"
+                    : "text-[var(--muted-foreground)]"
+                )}
+              >
+                <Icon className="h-5 w-5" />
+                {item.label}
+              </Link>
+            );
+          })}
+          <button
+            onClick={() => setMoreOpen(!moreOpen)}
+            className={cn(
+              "flex flex-col items-center gap-1 px-2 py-1 text-xs",
+              isMoreActive || moreOpen
+                ? "text-[var(--primary)]"
+                : "text-[var(--muted-foreground)]"
+            )}
+          >
+            <MoreHorizontal className="h-5 w-5" />
+            More
+          </button>
+        </div>
+      </nav>
+    </>
   );
 }
