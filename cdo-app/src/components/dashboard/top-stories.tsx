@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
   BookOpen,
@@ -13,6 +13,8 @@ import {
   ChevronDown,
   ChevronUp,
   RefreshCw,
+  Headphones,
+  Check,
 } from "lucide-react";
 
 interface Story {
@@ -21,6 +23,7 @@ interface Story {
   source: string;
   summary?: string;
   category: string;
+  contentType: string;
   url: string;
   publishedAt?: string;
 }
@@ -45,6 +48,10 @@ const categoryLabels: Record<string, string> = {
   ANALYTICS: "Analytics",
 };
 
+function spotifySearchUrl(title: string): string {
+  return `https://open.spotify.com/search/${encodeURIComponent(title)}`;
+}
+
 export function TopStories() {
   const [stories, setStories] = useState<Story[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,6 +71,17 @@ export function TopStories() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
+  }, []);
+
+  const markAsReadAndTrack = useCallback((id: string, contentType: string) => {
+    setReadStories((prev) => new Set(prev).add(id));
+    setDismissedStories((prev) => new Set(prev).add(id));
+    // Fire-and-forget: increment reading/listening goal
+    fetch("/api/goals/log-read", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contentType }),
+    }).catch(() => {});
   }, []);
 
   const toggleSave = (e: React.MouseEvent, id: string) => {
@@ -99,12 +117,22 @@ export function TopStories() {
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!swipingId) return;
     const diff = e.touches[0].clientX - touchStartX.current;
-    if (diff < 0) setSwipeOffset(diff);
+    // Allow swiping both directions
+    setSwipeOffset(diff);
   };
 
   const handleTouchEnd = () => {
-    if (swipingId && swipeOffset < -100) {
-      setDismissedStories((prev) => new Set(prev).add(swipingId));
+    if (swipingId) {
+      if (swipeOffset < -100) {
+        // Swipe left → dismiss
+        setDismissedStories((prev) => new Set(prev).add(swipingId));
+      } else if (swipeOffset > 100) {
+        // Swipe right → mark as read + dismiss + increment goal
+        const story = stories.find((s) => s.id === swipingId);
+        if (story) {
+          markAsReadAndTrack(swipingId, story.contentType);
+        }
+      }
     }
     setSwipingId(null);
     setSwipeOffset(0);
@@ -134,6 +162,9 @@ export function TopStories() {
             const isRead = readStories.has(story.id);
             const isExpanded = expandedStory === story.id;
             const isSwiping = swipingId === story.id;
+            const isPodcast = story.contentType === "PODCAST";
+            const swipingRight = isSwiping && swipeOffset > 0;
+            const swipingLeft = isSwiping && swipeOffset < 0;
 
             return (
               <div
@@ -143,9 +174,21 @@ export function TopStories() {
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
               >
-                <div className="absolute inset-0 bg-red-100 dark:bg-red-900/30 flex items-center justify-end pr-4 rounded-lg">
+                {/* Swipe left background: dismiss */}
+                <div className={`absolute inset-0 flex items-center justify-end pr-4 rounded-lg transition-colors ${
+                  swipingLeft ? "bg-red-100 dark:bg-red-900/30" : "bg-transparent"
+                }`}>
                   <span className="text-red-600 dark:text-red-400 text-sm font-medium flex items-center gap-1">
                     <X className="h-4 w-4" /> Not interested
+                  </span>
+                </div>
+
+                {/* Swipe right background: mark as read */}
+                <div className={`absolute inset-0 flex items-center justify-start pl-4 rounded-lg transition-colors ${
+                  swipingRight ? "bg-green-100 dark:bg-green-900/30" : "bg-transparent"
+                }`}>
+                  <span className="text-green-600 dark:text-green-400 text-sm font-medium flex items-center gap-1">
+                    <Check className="h-4 w-4" /> Mark as read
                   </span>
                 </div>
 
@@ -166,6 +209,11 @@ export function TopStories() {
                         <span className={`text-xs px-2 py-0.5 rounded-full ${categoryColors[story.category] || "bg-gray-100 text-gray-800"}`}>
                           {categoryLabels[story.category] || story.category}
                         </span>
+                        {isPodcast && (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-800 flex items-center gap-1">
+                            <Headphones className="h-3 w-3" /> Podcast
+                          </span>
+                        )}
                         <span className="text-xs text-[var(--muted-foreground)]">{story.source}</span>
                         {story.publishedAt && (
                           <span className="text-xs text-[var(--muted-foreground)]">
@@ -204,7 +252,7 @@ export function TopStories() {
                   </div>
 
                   {isExpanded && (
-                    <div className="mt-4 pt-4 border-t border-[var(--border)]">
+                    <div className="mt-4 pt-4 border-t border-[var(--border)] flex items-center gap-3 flex-wrap">
                       <a
                         href={story.url}
                         target="_blank"
@@ -213,8 +261,22 @@ export function TopStories() {
                         className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--primary)] hover:underline"
                       >
                         <ExternalLink className="h-3.5 w-3.5" />
-                        Read full article at {story.source}
+                        {isPodcast ? "View podcast" : "Read full article"} at {story.source}
                       </a>
+                      {isPodcast && (
+                        <a
+                          href={spotifySearchUrl(story.title)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg bg-[#1DB954] text-white hover:bg-[#1ed760] transition-colors"
+                        >
+                          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
+                          </svg>
+                          Listen on Spotify
+                        </a>
+                      )}
                     </div>
                   )}
 
