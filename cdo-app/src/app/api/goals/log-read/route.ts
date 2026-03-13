@@ -5,8 +5,8 @@ import { getAuthUserId } from "@/lib/api-auth";
 
 /**
  * POST /api/goals/log-read
- * Finds the user's "Read industry articles" (or similar reading/listening) goal
- * and increments its currentValue by 1, creating a GoalEntry.
+ * Either increments a specific goal (by goalId) or auto-matches a reading/listening goal.
+ * Creates a GoalEntry and increments currentValue by 1.
  */
 export async function POST(request: NextRequest) {
   const userId = await getAuthUserId();
@@ -14,48 +14,65 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json();
   const contentType: string = body.contentType || "ARTICLE";
+  const goalId: string | undefined = body.goalId;
 
-  // Find the best matching active habit goal for reading/listening
-  const titleFilters: Prisma.GoalWhereInput[] = [
-    { title: { contains: "article", mode: "insensitive" as Prisma.QueryMode } },
-    { title: { contains: "read", mode: "insensitive" as Prisma.QueryMode } },
-  ];
-  if (contentType === "PODCAST") {
-    titleFilters.push({ title: { contains: "podcast", mode: "insensitive" as Prisma.QueryMode } });
+  let goal;
+
+  if (goalId) {
+    // Direct goal increment (e.g. from Today's Actions manual check-off)
+    goal = await prisma.goal.findFirst({
+      where: { id: goalId, userId, status: "ACTIVE" },
+    });
+  } else {
+    // Auto-match: find the best matching active habit goal for reading/listening
+    const titleFilters: Prisma.GoalWhereInput[] = [
+      { title: { contains: "article", mode: "insensitive" as Prisma.QueryMode } },
+      { title: { contains: "read", mode: "insensitive" as Prisma.QueryMode } },
+    ];
+    if (contentType === "PODCAST") {
+      titleFilters.push({ title: { contains: "podcast", mode: "insensitive" as Prisma.QueryMode } });
+    }
+
+    goal = await prisma.goal.findFirst({
+      where: {
+        userId,
+        status: "ACTIVE",
+        type: "HABIT",
+        OR: titleFilters,
+      },
+    });
   }
 
-  const readingGoal = await prisma.goal.findFirst({
-    where: {
-      userId,
-      status: "ACTIVE",
-      type: "HABIT",
-      OR: titleFilters,
-    },
-  });
-
-  if (!readingGoal) {
+  if (!goal) {
     return NextResponse.json({ matched: false, message: "No matching goal found" });
   }
+
+  const notes =
+    contentType === "MANUAL"
+      ? "Manually completed"
+      : contentType === "PODCAST"
+        ? "Listened to podcast"
+        : "Read article";
 
   // Create a goal entry and increment currentValue
   await prisma.$transaction([
     prisma.goalEntry.create({
       data: {
-        goalId: readingGoal.id,
+        goalId: goal.id,
         value: 1,
-        notes: contentType === "PODCAST" ? "Listened to podcast" : "Read article",
+        notes,
       },
     }),
     prisma.goal.update({
-      where: { id: readingGoal.id },
+      where: { id: goal.id },
       data: { currentValue: { increment: 1 } },
     }),
   ]);
 
   return NextResponse.json({
     matched: true,
-    goalId: readingGoal.id,
-    goalTitle: readingGoal.title,
-    newValue: readingGoal.currentValue + 1,
+    goalId: goal.id,
+    goalTitle: goal.title,
+    newValue: goal.currentValue + 1,
   });
 }

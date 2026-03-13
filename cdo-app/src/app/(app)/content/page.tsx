@@ -84,7 +84,7 @@ const SUGGESTED_TOPICS = [
 ];
 
 function spotifySearchUrl(title: string): string {
-  return `https://open.spotify.com/search/${encodeURIComponent(title)}`;
+  return `https://open.spotify.com/search/${encodeURIComponent(title)}/episodes`;
 }
 
 interface ContentItem {
@@ -234,7 +234,9 @@ export default function ContentPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ contentType }),
-    }).catch(() => {});
+    })
+      .then(() => window.dispatchEvent(new CustomEvent("goal-progress")))
+      .catch(() => {});
   }, []);
 
   const filteredContent = content.filter((item) => {

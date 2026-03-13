@@ -54,7 +54,7 @@ const categoryLabels: Record<string, string> = {
 function SpotifyButton({ title }: { title: string }) {
   return (
     <a
-      href={`https://open.spotify.com/search/${encodeURIComponent(title)}`}
+      href={`https://open.spotify.com/search/${encodeURIComponent(title)}/episodes`}
       target="_blank"
       rel="noopener noreferrer"
       onClick={(e) => e.stopPropagation()}
@@ -96,7 +96,9 @@ export function TopStories() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ contentType }),
-    }).catch(() => {});
+    })
+      .then(() => window.dispatchEvent(new CustomEvent("goal-progress")))
+      .catch(() => {});
   }, []);
 
   const toggleSave = (e: React.MouseEvent, id: string) => {
