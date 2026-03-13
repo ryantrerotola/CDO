@@ -2,16 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { fetchAllFeeds, fetchNewsAPI } from "@/lib/content";
 
-// Known seed content URLs we always keep
+// All seed content URLs — never purged during refresh
 const SEED_URLS = [
   "https://hbr.org/2026/01/the-evolving-role-of-the-cdo",
   "https://martinfowler.com/articles/data-mesh-guide",
   "https://mckinsey.com/data-driven-culture-2026",
   "https://iapp.org/eu-ai-act-data-leaders",
   "https://amazon.com/chief-data-officers-playbook",
+  "https://amazon.com/data-strategy-bernard-marr",
+  "https://amazon.com/competing-analytics-davenport",
+  "https://amazon.com/data-governance-john-ladley",
+  "https://thoughtspot.com/data-chief/leading-transformation",
   "https://nist.gov/ai-governance-frameworks-comparison",
   "https://towardsdatascience.com/snowflake-vs-databricks-2026",
-  "https://amazon.com/data-governance-john-ladley",
+  "https://dama.org/cdmp-study-guide",
 ];
 
 export async function GET(request: NextRequest) {
