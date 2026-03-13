@@ -100,6 +100,106 @@ The overallReadiness should be 0-100 representing how ready they are for a CDO r
   return parseJsonResponse(text) as ResumeAnalysis;
 }
 
+export interface GoalRecommendation {
+  title: string;
+  description: string;
+  type: "MILESTONE" | "HABIT" | "TARGET" | "PROJECT";
+  frequency: "DAILY" | "WEEKLY" | "MONTHLY" | "QUARTERLY" | "YEARLY" | "ONCE";
+  targetValue: number;
+  skillArea: string;
+  whyThisMatters: string;
+  subGoals: {
+    title: string;
+    description: string;
+    type: "MILESTONE" | "HABIT" | "TARGET" | "PROJECT";
+    frequency: "DAILY" | "WEEKLY" | "MONTHLY" | "QUARTERLY" | "YEARLY" | "ONCE";
+    targetValue: number;
+    order: number;
+  }[];
+  howToAchieve: string[];
+}
+
+export async function generateGoalRecommendations(
+  skills: SkillAssessment,
+  gaps: { area: string; importance: string; recommendation: string }[],
+  existingGoals: string[]
+): Promise<GoalRecommendation[]> {
+  const client = getClient();
+
+  const weakestSkills = Object.entries(skills)
+    .sort(([, a], [, b]) => a - b)
+    .slice(0, 3)
+    .map(([key, value]) => `${key}: ${value}/10`);
+
+  const criticalGaps = gaps
+    .filter((g) => g.importance === "critical" || g.importance === "important")
+    .slice(0, 5);
+
+  const message = await client.messages.create({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 4000,
+    messages: [
+      {
+        role: "user",
+        content: `You are a CDO career coach. Based on this person's skill assessment and gap analysis, recommend 3-4 specific, actionable goals that will address their biggest weaknesses. Each goal should have 3-4 incremental sub-goals that build on each other.
+
+SKILL ASSESSMENT (1-10 scale):
+${JSON.stringify(skills, null, 2)}
+
+WEAKEST AREAS: ${weakestSkills.join(", ")}
+
+IDENTIFIED GAPS:
+${criticalGaps.map((g) => `- ${g.area} (${g.importance}): ${g.recommendation}`).join("\n")}
+
+EXISTING GOALS (avoid duplicating these):
+${existingGoals.length > 0 ? existingGoals.join(", ") : "None yet"}
+
+For each recommendation, provide:
+1. A clear, measurable parent goal
+2. 3-4 incremental sub-goals ordered from "start here" to "advanced"
+3. Practical tips for how to achieve it
+4. Why this specific gap matters for becoming a CDO
+
+Respond in JSON array:
+[{
+  "title": "Goal title (action-oriented, specific)",
+  "description": "What this goal achieves and why it matters (1-2 sentences)",
+  "type": "PROJECT|MILESTONE|HABIT|TARGET",
+  "frequency": "ONCE|DAILY|WEEKLY|MONTHLY|QUARTERLY|YEARLY",
+  "targetValue": 1,
+  "skillArea": "one of: technical, dataGovernance, aiMl, businessAcumen, leadership, stakeholderManagement",
+  "whyThisMatters": "2-3 sentences explaining why this gap is holding them back from a CDO role. Be specific to their scores. Use second person.",
+  "subGoals": [
+    {
+      "title": "Sub-goal title",
+      "description": "What to do and what success looks like",
+      "type": "MILESTONE|HABIT|TARGET",
+      "frequency": "ONCE|WEEKLY|MONTHLY",
+      "targetValue": 1,
+      "order": 1
+    }
+  ],
+  "howToAchieve": [
+    "Specific actionable tip 1",
+    "Specific actionable tip 2",
+    "Specific actionable tip 3"
+  ]
+}]
+
+IMPORTANT:
+- Make sub-goals incremental: each one builds on the previous
+- Sub-goals should be concrete and completable (not vague)
+- Include a mix of learning (read/study), doing (build/create), and demonstrating (present/publish)
+- Tailor recommendations to their specific scores, not generic advice`,
+      },
+    ],
+  });
+
+  const text =
+    message.content[0].type === "text" ? message.content[0].text : "";
+  return parseJsonResponse(text) as GoalRecommendation[];
+}
+
 export async function getCompanyIntelligence(
   companyName: string,
   industry?: string
