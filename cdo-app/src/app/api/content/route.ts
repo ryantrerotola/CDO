@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { fetchAllFeeds, fetchNewsAPI } from "@/lib/content";
 
@@ -6,16 +7,55 @@ export async function GET(request: NextRequest) {
   const category = request.nextUrl.searchParams.get("category");
   const contentType = request.nextUrl.searchParams.get("type");
   const limit = parseInt(request.nextUrl.searchParams.get("limit") || "20");
+  const topics = request.nextUrl.searchParams.get("topics"); // comma-separated
 
-  const where: Record<string, string> = {};
+  const where: Prisma.ContentWhereInput = {};
   if (category && category !== "All") {
-    where.category = category;
+    where.category = category as Prisma.EnumContentCategoryFilter;
   }
   if (contentType) {
-    where.contentType = contentType;
+    where.contentType = contentType as Prisma.EnumContentTypeFilter;
   }
 
-  // Prioritize curated content (relevanceScore 1.0) over live feed articles (0.5)
+  // If user has custom topics, boost matching content by fetching in two passes
+  if (topics) {
+    const topicList = topics.split(",").map((t) => t.trim()).filter(Boolean);
+
+    if (topicList.length > 0) {
+      // First: get topic-matching content
+      const topicFilter: Prisma.ContentWhereInput = {
+        ...where,
+        OR: topicList.flatMap((topic) => [
+          { title: { contains: topic, mode: "insensitive" as Prisma.QueryMode } },
+          { summary: { contains: topic, mode: "insensitive" as Prisma.QueryMode } },
+        ]),
+      };
+
+      const [topicContent, generalContent] = await Promise.all([
+        prisma.content.findMany({
+          where: topicFilter,
+          orderBy: [{ relevanceScore: "desc" }, { createdAt: "desc" }],
+          take: limit,
+        }),
+        prisma.content.findMany({
+          where,
+          orderBy: [{ relevanceScore: "desc" }, { createdAt: "desc" }],
+          take: limit,
+        }),
+      ]);
+
+      // Merge: topic matches first, then general (deduped)
+      const seenIds = new Set(topicContent.map((c) => c.id));
+      const merged = [
+        ...topicContent,
+        ...generalContent.filter((c) => !seenIds.has(c.id)),
+      ].slice(0, limit);
+
+      return NextResponse.json(merged);
+    }
+  }
+
+  // Default: no topic filtering
   const content = await prisma.content.findMany({
     where,
     orderBy: [

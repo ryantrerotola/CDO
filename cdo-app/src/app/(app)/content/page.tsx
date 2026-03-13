@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   Search,
   Bookmark,
@@ -24,6 +25,9 @@ import {
   ChevronUp,
   RefreshCw,
   Check,
+  Plus,
+  Settings2,
+  Sparkles,
 } from "lucide-react";
 
 const categories = [
@@ -56,6 +60,28 @@ const categoryMap: Record<string, string> = {
   INDUSTRY_NEWS: "Industry News",
   TECHNICAL: "Technical",
 };
+
+// Predefined topic suggestions users can toggle
+const SUGGESTED_TOPICS = [
+  "Data Engineering",
+  "Data Governance",
+  "Cloud Platforms",
+  "Machine Learning",
+  "Data Mesh",
+  "Snowflake",
+  "Databricks",
+  "dbt",
+  "Data Quality",
+  "AI Strategy",
+  "Data Privacy",
+  "Analytics Engineering",
+  "Data Lakehouse",
+  "Apache Spark",
+  "Real-Time Analytics",
+  "Data Catalog",
+  "MLOps",
+  "Data Visualization",
+];
 
 function spotifySearchUrl(title: string): string {
   return `https://open.spotify.com/search/${encodeURIComponent(title)}`;
@@ -90,8 +116,34 @@ export default function ContentPage() {
   const [swipeOffset, setSwipeOffset] = useState(0);
   const touchStartX = useRef(0);
 
+  // Interest/topic state
+  const [showInterests, setShowInterests] = useState(false);
+  const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
+  const [customTopicInput, setCustomTopicInput] = useState("");
+  const [savingInterests, setSavingInterests] = useState(false);
+  const [discoveringTopics, setDiscoveringTopics] = useState(false);
+  const [topicResults, setTopicResults] = useState<ContentItem[]>([]);
+
+  // Load user preferences on mount
   useEffect(() => {
-    fetch("/api/content?limit=50")
+    fetch("/api/profile")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.preferences?.customTopics) {
+          setSelectedTopics(data.preferences.customTopics);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Fetch content — include topics if user has any
+  const fetchContent = useCallback((topics: string[]) => {
+    setLoading(true);
+    const params = new URLSearchParams({ limit: "50" });
+    if (topics.length > 0) {
+      params.set("topics", topics.join(","));
+    }
+    fetch(`/api/content?${params}`)
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) setContent(data);
@@ -99,6 +151,81 @@ export default function ContentPage() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    fetchContent(selectedTopics);
+  }, []);
+
+  // Re-fetch when topics change
+  const applyTopics = useCallback((topics: string[]) => {
+    fetchContent(topics);
+    // Also discover new content for custom topics
+    if (topics.length > 0) {
+      setDiscoveringTopics(true);
+      fetch("/api/content/discover", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topics }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.results && data.results.length > 0) {
+            setTopicResults(data.results);
+          }
+          // Re-fetch main content to include any newly discovered items
+          if (data.freshItems > 0) {
+            fetchContent(topics);
+          }
+        })
+        .catch(console.error)
+        .finally(() => setDiscoveringTopics(false));
+    } else {
+      setTopicResults([]);
+    }
+  }, [fetchContent]);
+
+  const toggleTopic = (topic: string) => {
+    setSelectedTopics((prev) =>
+      prev.includes(topic)
+        ? prev.filter((t) => t !== topic)
+        : [...prev, topic]
+    );
+  };
+
+  const addCustomTopic = () => {
+    const topic = customTopicInput.trim();
+    if (!topic || selectedTopics.includes(topic)) return;
+    setSelectedTopics((prev) => [...prev, topic]);
+    setCustomTopicInput("");
+  };
+
+  const removeTopic = (topic: string) => {
+    setSelectedTopics((prev) => prev.filter((t) => t !== topic));
+  };
+
+  const saveAndApplyInterests = async () => {
+    setSavingInterests(true);
+    try {
+      // Save to user preferences
+      const profileRes = await fetch("/api/profile");
+      const profileData = await profileRes.json();
+      const currentPrefs = profileData?.preferences || {};
+
+      await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          preferences: { ...currentPrefs, customTopics: selectedTopics },
+        }),
+      });
+
+      // Apply immediately
+      applyTopics(selectedTopics);
+    } catch (error) {
+      console.error("Failed to save interests:", error);
+    }
+    setSavingInterests(false);
+  };
 
   const markAsReadAndTrack = useCallback((id: string, contentType: string) => {
     setReadItems((prev) => new Set(prev).add(id));
@@ -187,12 +314,146 @@ export default function ContentPage() {
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Content Feed</h1>
-        <p className="text-[var(--muted-foreground)]">
-          Curated articles, books, podcasts, and more for your CDO journey
-        </p>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold">Content Feed</h1>
+          <p className="text-[var(--muted-foreground)]">
+            Curated articles, books, podcasts, and more for your CDO journey
+          </p>
+        </div>
+        <Button
+          variant={showInterests ? "primary" : "outline"}
+          size="sm"
+          onClick={() => setShowInterests(!showInterests)}
+        >
+          <Settings2 className="h-4 w-4 mr-1" />
+          My Interests
+          {selectedTopics.length > 0 && (
+            <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-[var(--primary-foreground)] text-[var(--primary)] text-[10px] font-bold">
+              {selectedTopics.length}
+            </span>
+          )}
+        </Button>
       </div>
+
+      {/* ── Your Interests Panel ─────────────────────────────────── */}
+      {showInterests && (
+        <Card className="mb-6 border-[var(--primary)] border-opacity-30">
+          <CardContent className="p-5 space-y-4">
+            <div>
+              <h3 className="font-semibold text-sm mb-1 flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-[var(--primary)]" />
+                Your Interests
+              </h3>
+              <p className="text-xs text-[var(--muted-foreground)]">
+                Select topics you want to learn about. Your feed will prioritize content matching these interests.
+              </p>
+            </div>
+
+            {/* Active topics */}
+            {selectedTopics.length > 0 && (
+              <div>
+                <label className="text-xs font-medium text-[var(--muted-foreground)] mb-2 block">
+                  Active Topics
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {selectedTopics.map((topic) => (
+                    <span
+                      key={topic}
+                      className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    >
+                      {topic}
+                      <button
+                        onClick={() => removeTopic(topic)}
+                        className="hover:opacity-70"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Suggested topics */}
+            <div>
+              <label className="text-xs font-medium text-[var(--muted-foreground)] mb-2 block">
+                Suggested Topics
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {SUGGESTED_TOPICS.filter((t) => !selectedTopics.includes(t)).map((topic) => (
+                  <button
+                    key={topic}
+                    onClick={() => toggleTopic(topic)}
+                    className="text-xs px-2.5 py-1 rounded-full border border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--primary)] hover:text-[var(--primary)] transition-colors"
+                  >
+                    <Plus className="h-3 w-3 inline mr-1" />
+                    {topic}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Custom topic input */}
+            <div>
+              <label className="text-xs font-medium text-[var(--muted-foreground)] mb-2 block">
+                Add Custom Topic
+              </label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="e.g., Apache Kafka, Data Contracts, Terraform..."
+                  value={customTopicInput}
+                  onChange={(e) => setCustomTopicInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addCustomTopic();
+                    }
+                  }}
+                  className="flex-1"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={addCustomTopic}
+                  disabled={!customTopicInput.trim()}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Save button */}
+            <div className="flex items-center justify-between pt-2 border-t border-[var(--border)]">
+              <p className="text-xs text-[var(--muted-foreground)]">
+                {selectedTopics.length === 0
+                  ? "No topics selected — showing default feed"
+                  : `${selectedTopics.length} topic${selectedTopics.length === 1 ? "" : "s"} selected`}
+              </p>
+              <Button
+                size="sm"
+                onClick={saveAndApplyInterests}
+                disabled={savingInterests}
+              >
+                {savingInterests ? (
+                  <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
+                ) : (
+                  <Check className="h-4 w-4 mr-1" />
+                )}
+                {savingInterests ? "Saving..." : "Save & Apply"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Discovering indicator */}
+      {discoveringTopics && (
+        <div className="mb-4 flex items-center gap-2 text-xs text-[var(--primary)]">
+          <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+          Discovering new content for your topics...
+        </div>
+      )}
 
       {/* Search & Filter */}
       <div className="mb-6 space-y-4">
@@ -278,6 +539,15 @@ export default function ContentPage() {
             const swipingRight = isSwiping && swipeOffset > 0;
             const swipingLeft = isSwiping && swipeOffset < 0;
 
+            // Check if this item matches any user topic
+            const matchedTopic = selectedTopics.find((topic) => {
+              const t = topic.toLowerCase();
+              return (
+                item.title.toLowerCase().includes(t) ||
+                (item.summary || "").toLowerCase().includes(t)
+              );
+            });
+
             return (
               <div
                 key={item.id}
@@ -329,6 +599,12 @@ export default function ContentPage() {
                               {new Date(item.publishedAt).toLocaleDateString()}
                             </span>
                           </>
+                        )}
+                        {matchedTopic && (
+                          <span className="text-xs px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300 flex items-center gap-1">
+                            <Sparkles className="h-3 w-3" />
+                            {matchedTopic}
+                          </span>
                         )}
                         {isRead && (
                           <span className="text-xs px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">Read</span>

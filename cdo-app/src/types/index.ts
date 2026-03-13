@@ -10,6 +10,7 @@ export interface SkillAssessment {
 export interface UserPreferences {
   contentCategories: string[];
   contentTypes: string[];
+  customTopics: string[];
   readingTime: "morning" | "lunch" | "evening";
   notificationsEnabled: boolean;
   emailDigest: "daily" | "weekly" | "none";
