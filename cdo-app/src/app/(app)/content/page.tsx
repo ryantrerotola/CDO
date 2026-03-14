@@ -105,11 +105,11 @@ type ViewFilter = "all" | "saved" | "read" | "unread";
 const SWIPE_THRESHOLD = 100;
 const MAX_SWIPE = 150;
 
-function persistDismiss(contentId: string) {
+function persistInteraction(contentId: string, action: "DISMISSED" | "READ") {
   fetch("/api/content-interactions", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ contentId, action: "DISMISSED" }),
+    body: JSON.stringify({ contentId, action }),
   }).catch(() => {});
 }
 
@@ -135,7 +135,7 @@ export default function ContentPage() {
   const [discoveringTopics, setDiscoveringTopics] = useState(false);
   const [topicResults, setTopicResults] = useState<ContentItem[]>([]);
 
-  // Load user preferences on mount
+  // Load user preferences and persisted interactions on mount
   useEffect(() => {
     fetch("/api/profile")
       .then((res) => res.json())
@@ -145,6 +145,14 @@ export default function ContentPage() {
         }
       })
       .catch(() => {});
+
+    Promise.all([
+      fetch("/api/content-interactions?action=DISMISSED").then((r) => r.json()).catch(() => []),
+      fetch("/api/content-interactions?action=READ").then((r) => r.json()).catch(() => []),
+    ]).then(([dismissed, read]) => {
+      if (Array.isArray(dismissed) && dismissed.length > 0) setDismissedItems(new Set(dismissed));
+      if (Array.isArray(read) && read.length > 0) setReadItems(new Set(read));
+    });
   }, []);
 
   // Fetch content — include topics if user has any
@@ -241,7 +249,8 @@ export default function ContentPage() {
   const markAsReadAndTrack = useCallback((id: string, contentType: string) => {
     setReadItems((prev) => new Set(prev).add(id));
     setDismissedItems((prev) => new Set(prev).add(id));
-    persistDismiss(id);
+    persistInteraction(id, "READ");
+    persistInteraction(id, "DISMISSED");
     fetch("/api/goals/log-read", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -289,7 +298,7 @@ export default function ContentPage() {
   const dismissItem = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     setDismissedItems((prev) => new Set(prev).add(id));
-    persistDismiss(id);
+    persistInteraction(id, "DISMISSED");
   };
 
   const handleTouchStart = (e: React.TouchEvent, id: string) => {
@@ -307,7 +316,7 @@ export default function ContentPage() {
     if (swipingId) {
       if (swipeOffset < -SWIPE_THRESHOLD) {
         setDismissedItems((prev) => new Set(prev).add(swipingId));
-        persistDismiss(swipingId);
+        persistInteraction(swipingId, "DISMISSED");
       } else if (swipeOffset > SWIPE_THRESHOLD) {
         const item = content.find((c) => c.id === swipingId);
         if (item) {

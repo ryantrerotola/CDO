@@ -68,11 +68,11 @@ function SpotifyButton({ title }: { title: string }) {
   );
 }
 
-function persistDismiss(contentId: string) {
+function persistInteraction(contentId: string, action: "DISMISSED" | "READ") {
   fetch("/api/content-interactions", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ contentId, action: "DISMISSED" }),
+    body: JSON.stringify({ contentId, action }),
   }).catch(() => {});
 }
 
@@ -87,10 +87,16 @@ export function TopStories() {
   const touchStartX = useRef(0);
 
   useEffect(() => {
-    fetch(`/api/content?limit=${FETCH_COUNT}`)
-      .then((res) => res.json())
-      .then((data) => {
+    // Load content and persisted interactions in parallel
+    Promise.all([
+      fetch(`/api/content?limit=${FETCH_COUNT}`).then((r) => r.json()),
+      fetch("/api/content-interactions?action=DISMISSED").then((r) => r.json()).catch(() => []),
+      fetch("/api/content-interactions?action=READ").then((r) => r.json()).catch(() => []),
+    ])
+      .then(([data, dismissed, read]) => {
         if (Array.isArray(data)) setStories(data);
+        if (Array.isArray(dismissed) && dismissed.length > 0) setDismissedStories(new Set(dismissed));
+        if (Array.isArray(read) && read.length > 0) setReadStories(new Set(read));
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -99,7 +105,8 @@ export function TopStories() {
   const markAsReadAndTrack = useCallback((id: string, contentType: string) => {
     setReadStories((prev) => new Set(prev).add(id));
     setDismissedStories((prev) => new Set(prev).add(id));
-    persistDismiss(id);
+    persistInteraction(id, "READ");
+    persistInteraction(id, "DISMISSED");
     fetch("/api/goals/log-read", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -130,7 +137,7 @@ export function TopStories() {
   const dismissStory = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     setDismissedStories((prev) => new Set(prev).add(id));
-    persistDismiss(id);
+    persistInteraction(id, "DISMISSED");
   };
 
   const handleTouchStart = (e: React.TouchEvent, id: string) => {
@@ -149,7 +156,7 @@ export function TopStories() {
     if (swipingId) {
       if (swipeOffset < -SWIPE_THRESHOLD) {
         setDismissedStories((prev) => new Set(prev).add(swipingId));
-        persistDismiss(swipingId);
+        persistInteraction(swipingId, "DISMISSED");
       } else if (swipeOffset > SWIPE_THRESHOLD) {
         const story = stories.find((s) => s.id === swipingId);
         if (story) {
