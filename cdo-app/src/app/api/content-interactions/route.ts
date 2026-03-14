@@ -34,15 +34,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "contentId and action required" }, { status: 400 });
   }
 
-  const interaction = await prisma.userContentInteraction.upsert({
-    where: {
-      userId_contentId_action: { userId, contentId, action },
-    },
-    update: { timestamp: new Date() },
-    create: { userId, contentId, action },
-  });
+  try {
+    const interaction = await prisma.userContentInteraction.upsert({
+      where: {
+        userId_contentId_action: { userId, contentId, action },
+      },
+      update: { timestamp: new Date() },
+      create: { userId, contentId, action },
+    });
 
-  return NextResponse.json(interaction);
+    return NextResponse.json(interaction);
+  } catch (error) {
+    console.error("Failed to save content interaction:", error);
+    return NextResponse.json(
+      { error: "Failed to save interaction" },
+      { status: 500 }
+    );
+  }
 }
 
 /**

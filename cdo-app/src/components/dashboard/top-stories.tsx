@@ -73,7 +73,9 @@ function persistInteraction(contentId: string, action: "DISMISSED" | "READ") {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ contentId, action }),
-  }).catch(() => {});
+  })
+    .then((r) => { if (!r.ok) console.error("content-interaction failed:", r.status); })
+    .catch((e) => console.error("content-interaction error:", e));
 }
 
 export function TopStories() {
@@ -104,9 +106,7 @@ export function TopStories() {
 
   const markAsReadAndTrack = useCallback((id: string, contentType: string) => {
     setReadStories((prev) => new Set(prev).add(id));
-    setDismissedStories((prev) => new Set(prev).add(id));
     persistInteraction(id, "READ");
-    persistInteraction(id, "DISMISSED");
     fetch("/api/goals/log-read", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
