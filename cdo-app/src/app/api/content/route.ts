@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { fetchAllFeeds, fetchNewsAPI } from "@/lib/content";
+import { fetchAllFeeds, fetchNewsAPI, fetchBraveSearch } from "@/lib/content";
 import { auth } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
@@ -81,15 +81,16 @@ export async function GET(request: NextRequest) {
   return NextResponse.json(content);
 }
 
-// Trigger content refresh (fetch from RSS + News API)
+// Trigger content refresh (fetch from RSS + News API + Brave Search)
 export async function POST() {
   try {
-    const [rssItems, newsItems] = await Promise.all([
+    const [rssItems, newsItems, braveItems] = await Promise.all([
       fetchAllFeeds(),
       fetchNewsAPI(),
+      fetchBraveSearch(),
     ]);
 
-    const allItems = [...rssItems, ...newsItems];
+    const allItems = [...rssItems, ...newsItems, ...braveItems];
     let created = 0;
 
     for (const item of allItems) {
@@ -104,7 +105,7 @@ export async function POST() {
             author: item.author,
             publishedAt: item.publishedAt,
             category: item.category as "DATA_STRATEGY" | "AI_ML" | "ANALYTICS" | "DATA_ETHICS" | "LEADERSHIP" | "INDUSTRY_NEWS" | "TECHNICAL",
-            contentType: "ARTICLE",
+            contentType: (item.contentType || "ARTICLE") as "ARTICLE" | "PODCAST" | "VIDEO" | "BOOK" | "COURSE" | "REPORT" | "INTERVIEW",
             summary: item.content?.substring(0, 500),
             relevanceScore: 0.5,
           },
