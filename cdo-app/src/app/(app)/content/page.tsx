@@ -84,7 +84,14 @@ const SUGGESTED_TOPICS = [
 ];
 
 function spotifySearchUrl(title: string): string {
-  return `https://open.spotify.com/search/${encodeURIComponent(title)}`;
+  // Strip common noise from titles so Spotify actually finds results
+  const cleaned = title
+    .replace(/[:\-–—|]/g, " ")
+    .replace(/\b(episode|ep\.?|#\d+)\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 80);
+  return `https://open.spotify.com/search/${encodeURIComponent(cleaned)}/episodes`;
 }
 
 interface ContentItem {

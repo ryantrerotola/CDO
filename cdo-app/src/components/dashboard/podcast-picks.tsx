@@ -24,8 +24,14 @@ interface PodcastEpisode {
 }
 
 function spotifyEpisodeSearchUrl(podcastName: string, episodeTitle: string): string {
-  const query = `${podcastName} ${episodeTitle}`;
-  return `https://open.spotify.com/search/${encodeURIComponent(query)}`;
+  // Use "show episode" format and strip noise so Spotify finds the right result
+  const cleaned = `${podcastName} ${episodeTitle}`
+    .replace(/[:\-–—|]/g, " ")
+    .replace(/\b(episode|ep\.?|#\d+)\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 80);
+  return `https://open.spotify.com/search/${encodeURIComponent(cleaned)}/episodes`;
 }
 
 const SWIPE_THRESHOLD = 100;
