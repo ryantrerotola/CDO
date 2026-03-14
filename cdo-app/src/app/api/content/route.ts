@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { fetchAllFeeds, fetchNewsAPI } from "@/lib/content";
+import { auth } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   const category = request.nextUrl.searchParams.get("category");
@@ -10,6 +11,18 @@ export async function GET(request: NextRequest) {
   const topics = request.nextUrl.searchParams.get("topics"); // comma-separated
 
   const where: Prisma.ContentWhereInput = {};
+
+  // Filter out content the user has dismissed
+  const session = await auth();
+  if (session?.user?.id) {
+    const dismissed = await prisma.userContentInteraction.findMany({
+      where: { userId: session.user.id, action: "DISMISSED" },
+      select: { contentId: true },
+    });
+    if (dismissed.length > 0) {
+      where.id = { notIn: dismissed.map((d) => d.contentId) };
+    }
+  }
   if (category && category !== "All") {
     where.category = category as Prisma.EnumContentCategoryFilter;
   }

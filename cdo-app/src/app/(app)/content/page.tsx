@@ -102,6 +102,17 @@ interface ContentItem {
 
 type ViewFilter = "all" | "saved" | "read" | "unread";
 
+const SWIPE_THRESHOLD = 100;
+const MAX_SWIPE = 150;
+
+function persistDismiss(contentId: string) {
+  fetch("/api/content-interactions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ contentId, action: "DISMISSED" }),
+  }).catch(() => {});
+}
+
 export default function ContentPage() {
   const [content, setContent] = useState<ContentItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -230,6 +241,7 @@ export default function ContentPage() {
   const markAsReadAndTrack = useCallback((id: string, contentType: string) => {
     setReadItems((prev) => new Set(prev).add(id));
     setDismissedItems((prev) => new Set(prev).add(id));
+    persistDismiss(id);
     fetch("/api/goals/log-read", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -277,6 +289,7 @@ export default function ContentPage() {
   const dismissItem = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     setDismissedItems((prev) => new Set(prev).add(id));
+    persistDismiss(id);
   };
 
   const handleTouchStart = (e: React.TouchEvent, id: string) => {
@@ -287,14 +300,15 @@ export default function ContentPage() {
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!swipingId) return;
     const diff = e.touches[0].clientX - touchStartX.current;
-    setSwipeOffset(diff);
+    setSwipeOffset(Math.max(-MAX_SWIPE, Math.min(MAX_SWIPE, diff)));
   };
 
   const handleTouchEnd = () => {
     if (swipingId) {
-      if (swipeOffset < -100) {
+      if (swipeOffset < -SWIPE_THRESHOLD) {
         setDismissedItems((prev) => new Set(prev).add(swipingId));
-      } else if (swipeOffset > 100) {
+        persistDismiss(swipingId);
+      } else if (swipeOffset > SWIPE_THRESHOLD) {
         const item = content.find((c) => c.id === swipingId);
         if (item) {
           markAsReadAndTrack(swipingId, item.contentType);
@@ -556,23 +570,27 @@ export default function ContentPage() {
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
               >
-                {/* Swipe left background: dismiss */}
-                <div className={`absolute inset-0 flex items-center justify-end pr-4 rounded-xl transition-colors ${
-                  swipingLeft ? "bg-red-100 dark:bg-red-900/30" : "bg-transparent"
-                }`}>
-                  <span className="text-red-600 dark:text-red-400 text-sm font-medium flex items-center gap-1">
-                    <X className="h-4 w-4" /> Dismiss
-                  </span>
-                </div>
-
-                {/* Swipe right background: mark as read */}
-                <div className={`absolute inset-0 flex items-center justify-start pl-4 rounded-xl transition-colors ${
-                  swipingRight ? "bg-green-100 dark:bg-green-900/30" : "bg-transparent"
-                }`}>
-                  <span className="text-green-600 dark:text-green-400 text-sm font-medium flex items-center gap-1">
-                    <Check className="h-4 w-4" /> Mark as read
-                  </span>
-                </div>
+                {/* Single swipe background — only show the active direction */}
+                {isSwiping && (
+                  <div className={`absolute inset-0 flex items-center rounded-xl transition-colors ${
+                    swipingLeft
+                      ? "justify-end pr-4 bg-red-100 dark:bg-red-900/30"
+                      : swipingRight
+                        ? "justify-start pl-4 bg-green-100 dark:bg-green-900/30"
+                        : ""
+                  }`}>
+                    {swipingLeft && (
+                      <span className="text-red-600 dark:text-red-400 text-sm font-medium flex items-center gap-1">
+                        <X className="h-4 w-4" /> Dismiss
+                      </span>
+                    )}
+                    {swipingRight && (
+                      <span className="text-green-600 dark:text-green-400 text-sm font-medium flex items-center gap-1">
+                        <Check className="h-4 w-4" /> Mark as read
+                      </span>
+                    )}
+                  </div>
+                )}
 
                 <Card
                   className={`group transition-all cursor-pointer relative ${

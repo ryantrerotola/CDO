@@ -30,6 +30,8 @@ interface Story {
 
 const DISPLAY_COUNT = 5;
 const FETCH_COUNT = 25;
+const SWIPE_THRESHOLD = 100;
+const MAX_SWIPE = 150;
 
 const categoryColors: Record<string, string> = {
   LEADERSHIP: "bg-purple-100 text-purple-800",
@@ -68,6 +70,14 @@ function SpotifyButton({ title }: { title: string }) {
   );
 }
 
+function persistDismiss(contentId: string) {
+  fetch("/api/content-interactions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ contentId, action: "DISMISSED" }),
+  }).catch(() => {});
+}
+
 export function TopStories() {
   const [stories, setStories] = useState<Story[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,6 +102,7 @@ export function TopStories() {
   const markAsReadAndTrack = useCallback((id: string, contentType: string) => {
     setReadStories((prev) => new Set(prev).add(id));
     setDismissedStories((prev) => new Set(prev).add(id));
+    persistDismiss(id);
     fetch("/api/goals/log-read", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -122,6 +133,7 @@ export function TopStories() {
   const dismissStory = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     setDismissedStories((prev) => new Set(prev).add(id));
+    persistDismiss(id);
   };
 
   const handleTouchStart = (e: React.TouchEvent, id: string) => {
@@ -132,14 +144,16 @@ export function TopStories() {
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!swipingId) return;
     const diff = e.touches[0].clientX - touchStartX.current;
-    setSwipeOffset(diff);
+    // Clamp the offset to prevent over-swiping
+    setSwipeOffset(Math.max(-MAX_SWIPE, Math.min(MAX_SWIPE, diff)));
   };
 
   const handleTouchEnd = () => {
     if (swipingId) {
-      if (swipeOffset < -100) {
+      if (swipeOffset < -SWIPE_THRESHOLD) {
         setDismissedStories((prev) => new Set(prev).add(swipingId));
-      } else if (swipeOffset > 100) {
+        persistDismiss(swipingId);
+      } else if (swipeOffset > SWIPE_THRESHOLD) {
         const story = stories.find((s) => s.id === swipingId);
         if (story) {
           markAsReadAndTrack(swipingId, story.contentType);
@@ -189,23 +203,27 @@ export function TopStories() {
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
               >
-                {/* Swipe left background: dismiss */}
-                <div className={`absolute inset-0 flex items-center justify-end pr-4 rounded-lg transition-colors ${
-                  swipingLeft ? "bg-red-100 dark:bg-red-900/30" : "bg-transparent"
-                }`}>
-                  <span className="text-red-600 dark:text-red-400 text-sm font-medium flex items-center gap-1">
-                    <X className="h-4 w-4" /> Not interested
-                  </span>
-                </div>
-
-                {/* Swipe right background: mark as read */}
-                <div className={`absolute inset-0 flex items-center justify-start pl-4 rounded-lg transition-colors ${
-                  swipingRight ? "bg-green-100 dark:bg-green-900/30" : "bg-transparent"
-                }`}>
-                  <span className="text-green-600 dark:text-green-400 text-sm font-medium flex items-center gap-1">
-                    <Check className="h-4 w-4" /> Mark as read
-                  </span>
-                </div>
+                {/* Single swipe background — only show the active direction */}
+                {isSwiping && (
+                  <div className={`absolute inset-0 flex items-center rounded-lg transition-colors ${
+                    swipingLeft
+                      ? "justify-end pr-4 bg-red-100 dark:bg-red-900/30"
+                      : swipingRight
+                        ? "justify-start pl-4 bg-green-100 dark:bg-green-900/30"
+                        : ""
+                  }`}>
+                    {swipingLeft && (
+                      <span className="text-red-600 dark:text-red-400 text-sm font-medium flex items-center gap-1">
+                        <X className="h-4 w-4" /> Not interested
+                      </span>
+                    )}
+                    {swipingRight && (
+                      <span className="text-green-600 dark:text-green-400 text-sm font-medium flex items-center gap-1">
+                        <Check className="h-4 w-4" /> Mark as read
+                      </span>
+                    )}
+                  </div>
+                )}
 
                 <div
                   className={`group border rounded-lg p-4 transition-all cursor-pointer relative bg-[var(--card)] ${
