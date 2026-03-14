@@ -117,6 +117,7 @@ export function TopStories() {
   }, []);
 
   const toggleSave = (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
     e.stopPropagation();
     setSavedStories((prev) => {
       const next = new Set(prev);
@@ -127,6 +128,7 @@ export function TopStories() {
   };
 
   const toggleRead = (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
     e.stopPropagation();
     const story = stories.find((s) => s.id === id);
     if (story && !readStories.has(id)) {
@@ -135,6 +137,7 @@ export function TopStories() {
   };
 
   const dismissStory = (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
     e.stopPropagation();
     setDismissedStories((prev) => new Set(prev).add(id));
     persistInteraction(id, "DISMISSED");
@@ -168,9 +171,9 @@ export function TopStories() {
     setSwipeOffset(0);
   };
 
-  // Show DISPLAY_COUNT items from the pool, skipping dismissed ones
+  // Show DISPLAY_COUNT unread items from the pool, skipping dismissed and read
   const visibleStories = stories
-    .filter((s) => !dismissedStories.has(s.id))
+    .filter((s) => !dismissedStories.has(s.id) && !readStories.has(s.id))
     .slice(0, DISPLAY_COUNT);
 
   return (
