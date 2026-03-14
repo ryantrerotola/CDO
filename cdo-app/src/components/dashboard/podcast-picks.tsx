@@ -19,9 +19,13 @@ interface PodcastEpisode {
   duration: string;
   description: string;
   url: string;
-  spotifyUrl: string;
   relevance: string;
   gradient: string;
+}
+
+function spotifyEpisodeSearchUrl(podcastName: string, episodeTitle: string): string {
+  const query = `${podcastName} ${episodeTitle}`;
+  return `https://open.spotify.com/search/${encodeURIComponent(query)}/episodes`;
 }
 
 const SWIPE_THRESHOLD = 100;
@@ -37,7 +41,7 @@ const recommendedEpisodes: PodcastEpisode[] = [
     description:
       "A Fortune 500 CDO shares the biggest surprises in transitioning from VP Analytics to the C-suite, including board communication and org design.",
     url: "https://thoughtspot.com/data-chief",
-    spotifyUrl: "https://open.spotify.com/show/7hJCWLsVaoqR7YTkWoyoOI",
+
     relevance: "Directly relevant to your career path",
     gradient: "from-purple-500 to-blue-500",
   },
@@ -50,7 +54,7 @@ const recommendedEpisodes: PodcastEpisode[] = [
     description:
       "Deep dive into implementing the data products approach — from identifying domains to measuring adoption and setting SLAs.",
     url: "https://www.dataengineeringpodcast.com",
-    spotifyUrl: "https://open.spotify.com/show/2iLvljRGVVIGlJshT5vNDS",
+
     relevance: "Connects to today's trending topic",
     gradient: "from-green-500 to-teal-500",
   },
@@ -63,7 +67,7 @@ const recommendedEpisodes: PodcastEpisode[] = [
     description:
       "How to build an AI governance program from scratch, covering framework selection, stakeholder buy-in, and risk assessment workflows.",
     url: "https://leadersofanalytics.com",
-    spotifyUrl: "https://open.spotify.com/show/4TMA1ASzWil1Y6y7hbwpWJ",
+
     relevance: "Builds on your AI/ML skill development",
     gradient: "from-orange-500 to-red-500",
   },
@@ -217,7 +221,7 @@ export function PodcastPicks() {
                     </p>
                     <div className="flex items-center gap-2 mt-2 flex-wrap">
                       <a
-                        href={ep.spotifyUrl}
+                        href={spotifyEpisodeSearchUrl(ep.podcastName, ep.episodeTitle)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-[#1DB954] text-white hover:bg-[#1ed760] transition-colors"
