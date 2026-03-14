@@ -51,7 +51,6 @@ const categoryLabels: Record<string, string> = {
   ANALYTICS: "Analytics",
 };
 
-// SpotifyButton removed — dynamic podcast content links to its original source URL instead
 
 function persistInteraction(contentId: string, action: "DISMISSED" | "READ") {
   fetch("/api/content-interactions", {
