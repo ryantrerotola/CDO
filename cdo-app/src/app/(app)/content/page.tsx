@@ -84,7 +84,7 @@ const SUGGESTED_TOPICS = [
 ];
 
 function spotifySearchUrl(title: string): string {
-  return `https://open.spotify.com/search/${encodeURIComponent(title)}/episodes`;
+  return `https://open.spotify.com/search/${encodeURIComponent(title)}`;
 }
 
 interface ContentItem {

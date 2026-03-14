@@ -56,7 +56,7 @@ const categoryLabels: Record<string, string> = {
 function SpotifyButton({ title }: { title: string }) {
   return (
     <a
-      href={`https://open.spotify.com/search/${encodeURIComponent(title)}/episodes`}
+      href={`https://open.spotify.com/search/${encodeURIComponent(title)}`}
       target="_blank"
       rel="noopener noreferrer"
       onClick={(e) => e.stopPropagation()}

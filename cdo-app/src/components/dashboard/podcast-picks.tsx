@@ -25,7 +25,7 @@ interface PodcastEpisode {
 
 function spotifyEpisodeSearchUrl(podcastName: string, episodeTitle: string): string {
   const query = `${podcastName} ${episodeTitle}`;
-  return `https://open.spotify.com/search/${encodeURIComponent(query)}/episodes`;
+  return `https://open.spotify.com/search/${encodeURIComponent(query)}`;
 }
 
 const SWIPE_THRESHOLD = 100;
