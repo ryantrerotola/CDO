@@ -10,8 +10,6 @@ import {
   Eye,
   EyeOff,
   X,
-  ChevronDown,
-  ChevronUp,
   RefreshCw,
   Headphones,
   Check,
@@ -84,7 +82,6 @@ export function TopStories() {
   const [savedStories, setSavedStories] = useState<Set<string>>(new Set());
   const [readStories, setReadStories] = useState<Set<string>>(new Set());
   const [dismissedStories, setDismissedStories] = useState<Set<string>>(new Set());
-  const [expandedStory, setExpandedStory] = useState<string | null>(null);
   const [swipingId, setSwipingId] = useState<string | null>(null);
   const [swipeOffset, setSwipeOffset] = useState(0);
   const touchStartX = useRef(0);
@@ -189,7 +186,6 @@ export function TopStories() {
           visibleStories.map((story) => {
             const isSaved = savedStories.has(story.id);
             const isRead = readStories.has(story.id);
-            const isExpanded = expandedStory === story.id;
             const isSwiping = swipingId === story.id;
             const isPodcast = story.contentType === "PODCAST";
             const swipingRight = isSwiping && swipeOffset > 0;
@@ -225,16 +221,18 @@ export function TopStories() {
                   </div>
                 )}
 
-                <div
-                  className={`group border rounded-lg p-4 transition-all cursor-pointer relative bg-[var(--card)] ${
+                <a
+                  href={isPodcast ? `https://open.spotify.com/search/${encodeURIComponent(story.title)}` : story.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`group border rounded-lg p-4 transition-all cursor-pointer relative bg-[var(--card)] block ${
                     isRead ? "border-[var(--border)] opacity-75" : "hover:border-[var(--primary)]"
-                  } ${isExpanded ? "border-[var(--primary)] ring-1 ring-[var(--primary)]" : ""}`}
+                  }`}
                   style={
                     isSwiping
                       ? { transform: `translateX(${swipeOffset}px)`, transition: "none" }
                       : { transform: "translateX(0)", transition: "transform 0.3s" }
                   }
-                  onClick={() => setExpandedStory(isExpanded ? null : story.id)}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
@@ -284,36 +282,11 @@ export function TopStories() {
                     </div>
                   </div>
 
-                  {/* Spotify button — always visible on podcasts, no expand needed */}
-                  {isPodcast && (
-                    <div className="mt-3">
-                      <SpotifyButton title={story.title} />
-                    </div>
-                  )}
-
-                  {isExpanded && (
-                    <div className="mt-4 pt-4 border-t border-[var(--border)] flex items-center gap-3 flex-wrap">
-                      <a
-                        href={story.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--primary)] hover:underline"
-                      >
-                        <ExternalLink className="h-3.5 w-3.5" />
-                        {isPodcast ? "View podcast" : "Read full article"} at {story.source}
-                      </a>
-                    </div>
-                  )}
-
-                  <div className="flex justify-center mt-2">
-                    {isExpanded ? (
-                      <ChevronUp className="h-4 w-4 text-[var(--muted-foreground)]" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4 text-[var(--muted-foreground)] opacity-0 group-hover:opacity-100 transition-opacity" />
-                    )}
+                  <div className="flex items-center gap-1 mt-2 text-xs text-[var(--primary)]">
+                    <ExternalLink className="h-3 w-3" />
+                    {isPodcast ? "Listen on Spotify" : `Read at ${story.source}`}
                   </div>
-                </div>
+                </a>
               </div>
             );
           })}
