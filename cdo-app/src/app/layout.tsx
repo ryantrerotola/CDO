@@ -3,7 +3,7 @@ import "./globals.css";
 import { Providers } from "@/components/providers";
 
 export const metadata: Metadata = {
-  title: "CDO Path - Career Growth Engine",
+  title: "Chief Data Officer - Career Growth Engine",
   description:
     "Your personalized daily briefing and career development app for becoming a Chief Data Officer",
 };

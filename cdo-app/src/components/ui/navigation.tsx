@@ -37,11 +37,19 @@ export function Navigation() {
 
   return (
     <nav className="flex flex-col h-full bg-[var(--card)] border-r border-[var(--border)]">
-      <div className="p-6">
-        <h1 className="text-xl font-bold text-[var(--primary)]">CDO Path</h1>
-        <p className="text-xs text-[var(--muted-foreground)] mt-1">
-          Career Growth Engine
-        </p>
+      <div className="p-6 flex items-center gap-3">
+        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[var(--primary)] to-blue-600 flex items-center justify-center flex-shrink-0">
+          <svg viewBox="0 0 24 24" className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 3v18h18" />
+            <path d="M7 16l4-8 4 5 5-9" />
+          </svg>
+        </div>
+        <div>
+          <h1 className="text-lg font-bold leading-tight">Chief Data Officer</h1>
+          <p className="text-[10px] text-[var(--muted-foreground)] tracking-wide uppercase">
+            Career Growth Engine
+          </p>
+        </div>
       </div>
 
       <div className="flex-1 px-3 space-y-1">

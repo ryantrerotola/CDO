@@ -39,9 +39,15 @@ export default function SignInPage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-[var(--background)]">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-[var(--primary)]">CDO Path</h1>
-          <p className="text-[var(--muted-foreground)] mt-1">
+        <div className="text-center mb-8 flex flex-col items-center">
+          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[var(--primary)] to-blue-600 flex items-center justify-center mb-3">
+            <svg viewBox="0 0 24 24" className="w-8 h-8 text-white" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 3v18h18" />
+              <path d="M7 16l4-8 4 5 5-9" />
+            </svg>
+          </div>
+          <h1 className="text-3xl font-bold">Chief Data Officer</h1>
+          <p className="text-[var(--muted-foreground)] mt-1 text-sm tracking-wide uppercase">
             Career Growth Engine
           </p>
         </div>
