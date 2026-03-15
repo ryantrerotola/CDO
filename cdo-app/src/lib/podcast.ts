@@ -50,31 +50,31 @@ export interface PodcastEpisode {
 export const TRACKED_PODCASTS = [
   {
     name: "The Data Chief",
-    spotifyShowId: "1RrOJch1xDOkgiM8jbVMil",
+    spotifyShowId: "7hJCWLsVaoqR7YTkWoyoOI",
     gradient: "from-purple-500 to-blue-500",
     relevance: "CDO career paths and executive leadership",
   },
   {
     name: "Data Engineering Podcast",
-    spotifyShowId: "2iMsqFLsHkSAMoOiPUeF4l",
+    spotifyShowId: "2iLvljRGVVIGlJshT5vNDS",
     gradient: "from-green-500 to-teal-500",
     relevance: "Technical data platform knowledge",
   },
   {
     name: "Leaders of Analytics",
-    spotifyShowId: "4nBJGBJHMjqd43pMFjkFgH",
+    spotifyShowId: "4TMA1ASzWil1Y6y7hbwpWJ",
     gradient: "from-orange-500 to-red-500",
     relevance: "Analytics leadership and AI strategy",
   },
   {
     name: "The Analytics Power Hour",
-    spotifyShowId: "56uru4EQ5lFzRSbgQ79mor",
+    spotifyShowId: "2ReJKUbDtcom5U0GgpOlAz",
     gradient: "from-blue-500 to-indigo-500",
     relevance: "Analytics career growth and industry trends",
   },
   {
     name: "Data Skeptic",
-    spotifyShowId: "1BZN7LfJJMaeiStp0Elqkj",
+    spotifyShowId: "1BZN7H3ikovSejhwQTzNm4",
     gradient: "from-pink-500 to-rose-500",
     relevance: "ML concepts for data leaders",
   },
