@@ -21,10 +21,10 @@ export function PodcastPicks() {
   const [podcasts, setPodcasts] = useState<PodcastWithEpisodes[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [savedEpisodes, setSavedEpisodes] = useState<Set<number>>(new Set());
-  const [listenedEpisodes, setListenedEpisodes] = useState<Set<number>>(new Set());
-  const [dismissedEpisodes, setDismissedEpisodes] = useState<Set<number>>(new Set());
-  const [swipingId, setSwipingId] = useState<number | null>(null);
+  const [savedEpisodes, setSavedEpisodes] = useState<Set<string>>(new Set());
+  const [listenedEpisodes, setListenedEpisodes] = useState<Set<string>>(new Set());
+  const [dismissedEpisodes, setDismissedEpisodes] = useState<Set<string>>(new Set());
+  const [swipingId, setSwipingId] = useState<string | null>(null);
   const [swipeOffset, setSwipeOffset] = useState(0);
   const touchStartX = useRef(0);
 
@@ -44,7 +44,7 @@ export function PodcastPicks() {
       });
   }, []);
 
-  const toggleSave = (id: number) => {
+  const toggleSave = (id: string) => {
     setSavedEpisodes((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -53,7 +53,7 @@ export function PodcastPicks() {
     });
   };
 
-  const markListened = (id: number) => {
+  const markListened = (id: string) => {
     setListenedEpisodes((prev) => new Set(prev).add(id));
     fetch("/api/goals/log-read", {
       method: "POST",
@@ -64,11 +64,11 @@ export function PodcastPicks() {
       .catch(() => {});
   };
 
-  const dismissEpisode = (id: number) => {
+  const dismissEpisode = (id: string) => {
     setDismissedEpisodes((prev) => new Set(prev).add(id));
   };
 
-  const handleTouchStart = (e: React.TouchEvent, id: number) => {
+  const handleTouchStart = (e: React.TouchEvent, id: string) => {
     touchStartX.current = e.touches[0].clientX;
     setSwipingId(id);
   };
@@ -98,6 +98,7 @@ export function PodcastPicks() {
       podcastName: podcast.name,
       gradient: podcast.gradient,
       relevance: podcast.relevance,
+      showUrl: podcast.showUrl,
     }))
   );
 
@@ -109,7 +110,7 @@ export function PodcastPicks() {
     return true;
   });
 
-  // Fallback: show static list if API key not configured
+  // Fallback: show static list with Spotify show links if API not configured
   if (!loading && (error || podcasts.length === 0)) {
     return (
       <Card>
@@ -121,9 +122,12 @@ export function PodcastPicks() {
         </CardHeader>
         <CardContent className="space-y-3">
           {TRACKED_PODCASTS.map((podcast) => (
-            <div
+            <a
               key={podcast.name}
-              className="group border rounded-lg p-4 hover:border-[var(--primary)] transition-all"
+              href={`https://open.spotify.com/show/${podcast.spotifyShowId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group border rounded-lg p-4 hover:border-[var(--primary)] transition-all block"
             >
               <div className="flex items-start gap-3">
                 <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${podcast.gradient} flex items-center justify-center flex-shrink-0`}>
@@ -132,12 +136,16 @@ export function PodcastPicks() {
                 <div className="flex-1 min-w-0">
                   <h4 className="text-sm font-medium">{podcast.name}</h4>
                   <p className="text-xs text-[var(--muted-foreground)] mt-0.5">{podcast.relevance}</p>
+                  <span className="inline-flex items-center gap-1 text-xs text-[var(--primary)] mt-1.5">
+                    <ExternalLink className="h-3 w-3" />
+                    Open on Spotify
+                  </span>
                 </div>
               </div>
-            </div>
+            </a>
           ))}
           <p className="text-xs text-center text-[var(--muted-foreground)]">
-            Add PODCAST_INDEX_KEY to see latest episodes
+            Add SPOTIFY_CLIENT_ID to see latest episodes
           </p>
         </CardContent>
       </Card>
@@ -165,8 +173,7 @@ export function PodcastPicks() {
           const isSwiping = swipingId === ep.id;
           const swipingRight = isSwiping && swipeOffset > 0;
           const swipingLeft = isSwiping && swipeOffset < 0;
-          const episodeUrl = ep.link || ep.enclosureUrl;
-          const duration = formatDuration(ep.duration);
+          const duration = formatDuration(ep.durationMs);
 
           return (
             <div
@@ -208,11 +215,19 @@ export function PodcastPicks() {
                 }
               >
                 <div className="flex items-start gap-3">
-                  <div
-                    className={`w-10 h-10 rounded-lg bg-gradient-to-br ${ep.gradient} flex items-center justify-center flex-shrink-0`}
-                  >
-                    <Headphones className="h-5 w-5 text-white" />
-                  </div>
+                  {ep.image ? (
+                    <img
+                      src={ep.image}
+                      alt=""
+                      className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
+                    />
+                  ) : (
+                    <div
+                      className={`w-10 h-10 rounded-lg bg-gradient-to-br ${ep.gradient} flex items-center justify-center flex-shrink-0`}
+                    >
+                      <Headphones className="h-5 w-5 text-white" />
+                    </div>
+                  )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
                       <span className="text-xs font-medium text-[var(--primary)]">
@@ -236,23 +251,25 @@ export function PodcastPicks() {
                     <p className="text-xs text-[var(--muted-foreground)] leading-relaxed line-clamp-2">
                       {ep.description}
                     </p>
-                    {ep.datePublishedPretty && (
+                    {ep.releaseDate && (
                       <p className="text-xs text-[var(--muted-foreground)] mt-1">
-                        {ep.datePublishedPretty}
+                        {new Date(ep.releaseDate).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
                       </p>
                     )}
                     <div className="flex items-center gap-2 mt-2 flex-wrap">
-                      {episodeUrl && (
-                        <a
-                          href={episodeUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 transition-opacity"
-                        >
-                          <ExternalLink className="h-3.5 w-3.5" />
-                          Listen to episode
-                        </a>
-                      )}
+                      <a
+                        href={ep.spotifyUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-[#1DB954] text-white hover:bg-[#1ed760] transition-colors"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        Play on Spotify
+                      </a>
                       <button
                         onClick={() => toggleSave(ep.id)}
                         className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full transition-colors ${
