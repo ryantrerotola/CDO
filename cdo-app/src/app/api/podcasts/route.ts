@@ -1,13 +1,18 @@
 import { NextResponse } from "next/server";
-import { fetchAllPodcastEpisodes } from "@/lib/podcast";
+import { auth } from "@/lib/auth";
+import { fetchAllPodcastEpisodes, getTrackedPodcasts } from "@/lib/podcast";
 
 export async function GET() {
   try {
-    const podcasts = await fetchAllPodcastEpisodes();
+    const session = await auth();
+    const userId = session?.user?.id;
 
-    return NextResponse.json(podcasts, {
+    // If logged in, use their tracked podcasts; otherwise use defaults
+    const podcasts = userId ? await getTrackedPodcasts(userId) : undefined;
+    const episodes = await fetchAllPodcastEpisodes(podcasts);
+
+    return NextResponse.json(episodes, {
       headers: {
-        // Cache for 2 hours — episodes don't change that often
         "Cache-Control": "public, s-maxage=7200, stale-while-revalidate=3600",
       },
     });

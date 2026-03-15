@@ -2,6 +2,8 @@
 // Requires SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET env vars.
 // Free tier, Client Credentials flow (no user login needed).
 
+import { prisma } from "@/lib/db";
+
 let cachedToken: { token: string; expiresAt: number } | null = null;
 
 async function getAccessToken(): Promise<string | null> {
@@ -46,8 +48,8 @@ export interface PodcastEpisode {
   image: string;
 }
 
-// Podcasts we track — identified by their Spotify show ID for direct lookups.
-export const TRACKED_PODCASTS = [
+// Default podcasts seeded for new users
+export const DEFAULT_PODCASTS = [
   {
     name: "The Data Chief",
     spotifyShowId: "7hJCWLsVaoqR7YTkWoyoOI",
@@ -80,12 +82,59 @@ export const TRACKED_PODCASTS = [
   },
 ];
 
+export interface TrackedPodcast {
+  name: string;
+  spotifyShowId: string;
+  gradient: string;
+  relevance: string;
+}
+
 export interface PodcastWithEpisodes {
   name: string;
   gradient: string;
   relevance: string;
   showUrl: string;
   episodes: PodcastEpisode[];
+}
+
+/** Get a user's tracked podcasts from DB, or return defaults. */
+export async function getTrackedPodcasts(userId: string): Promise<TrackedPodcast[]> {
+  try {
+    const rows = await prisma.trackedPodcast.findMany({
+      where: { userId },
+      orderBy: { createdAt: "asc" },
+    });
+
+    if (rows.length > 0) {
+      return rows.map((r) => ({
+        name: r.name,
+        spotifyShowId: r.spotifyShowId,
+        gradient: r.gradient,
+        relevance: r.relevance || "",
+      }));
+    }
+  } catch {
+    // DB not available — fall through to defaults
+  }
+
+  return DEFAULT_PODCASTS;
+}
+
+/** Seed default podcasts for a user (called on first add or explicitly). */
+export async function seedDefaultPodcasts(userId: string) {
+  for (const p of DEFAULT_PODCASTS) {
+    await prisma.trackedPodcast.upsert({
+      where: { userId_spotifyShowId: { userId, spotifyShowId: p.spotifyShowId } },
+      update: {},
+      create: {
+        userId,
+        name: p.name,
+        spotifyShowId: p.spotifyShowId,
+        gradient: p.gradient,
+        relevance: p.relevance,
+      },
+    });
+  }
 }
 
 async function fetchShowEpisodes(
@@ -122,12 +171,16 @@ async function fetchShowEpisodes(
   }
 }
 
-export async function fetchAllPodcastEpisodes(): Promise<PodcastWithEpisodes[]> {
+export async function fetchAllPodcastEpisodes(
+  podcasts?: TrackedPodcast[]
+): Promise<PodcastWithEpisodes[]> {
   const token = await getAccessToken();
   if (!token) return [];
 
+  const list = podcasts || DEFAULT_PODCASTS;
+
   const results = await Promise.allSettled(
-    TRACKED_PODCASTS.map(async (podcast) => {
+    list.map(async (podcast) => {
       const episodes = await fetchShowEpisodes(token, podcast.spotifyShowId, 3);
       return {
         name: podcast.name,

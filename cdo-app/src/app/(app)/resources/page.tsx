@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Card,
   CardHeader,
@@ -17,6 +17,11 @@ import {
   ExternalLink,
   GraduationCap,
   Globe,
+  Plus,
+  Trash2,
+  Search,
+  Loader2,
+  X,
 } from "lucide-react";
 
 const tabs = [
@@ -152,44 +157,22 @@ const communities = [
   },
 ];
 
-const podcasts = [
-  {
-    name: "The Data Chief",
-    host: "ThoughtSpot",
-    description:
-      "Weekly conversations with CDOs and data leaders about their journeys and strategies.",
-    frequency: "Weekly",
-    url: "https://thoughtspot.com/data-chief",
-    latestEpisode: "From VP Analytics to CDO: What Changes",
-  },
-  {
-    name: "Data Skeptic",
-    host: "Kyle Polich",
-    description:
-      "Deep dives into data science, AI, and machine learning topics with industry experts.",
-    frequency: "Weekly",
-    url: "https://dataskeptic.com",
-    latestEpisode: "Responsible AI at Scale in the Enterprise",
-  },
-  {
-    name: "Leaders of Analytics",
-    host: "Jeremy Roberts",
-    description:
-      "Interviews with analytics leaders about building data-driven organizations.",
-    frequency: "Bi-weekly",
-    url: "https://leadersofanalytics.com",
-    latestEpisode: "AI Governance: A CDO's Practical Guide",
-  },
-  {
-    name: "Data Engineering Podcast",
-    host: "Tobias Macey",
-    description:
-      "Technical deep dives into data infrastructure, platforms, and engineering practices.",
-    frequency: "Weekly",
-    url: "https://www.dataengineeringpodcast.com",
-    latestEpisode: "Building a Data Products Operating Model",
-  },
-];
+interface TrackedPodcastRow {
+  id: string;
+  name: string;
+  spotifyShowId: string;
+  gradient: string;
+  relevance: string | null;
+}
+
+interface SpotifySearchResult {
+  spotifyShowId: string;
+  name: string;
+  publisher: string;
+  description: string;
+  image: string;
+  totalEpisodes: number;
+}
 
 const events = [
   {
@@ -224,6 +207,69 @@ const events = [
 
 export default function ResourcesPage() {
   const [activeTab, setActiveTab] = useState("books");
+  const [trackedPodcasts, setTrackedPodcasts] = useState<TrackedPodcastRow[]>([]);
+  const [podcastsLoading, setPodcastsLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<SpotifySearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  // Fetch tracked podcasts when tab opens
+  useEffect(() => {
+    if (activeTab === "podcasts" && trackedPodcasts.length === 0 && !podcastsLoading) {
+      setPodcastsLoading(true);
+      fetch("/api/podcasts/tracked")
+        .then((res) => res.ok ? res.json() : [])
+        .then((data) => setTrackedPodcasts(data))
+        .catch(() => {})
+        .finally(() => setPodcastsLoading(false));
+    }
+  }, [activeTab, trackedPodcasts.length, podcastsLoading]);
+
+  // Debounced Spotify search
+  useEffect(() => {
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    setSearching(true);
+    searchTimeout.current = setTimeout(() => {
+      fetch(`/api/podcasts/search?q=${encodeURIComponent(searchQuery)}`)
+        .then((res) => res.ok ? res.json() : [])
+        .then((data) => setSearchResults(data))
+        .catch(() => setSearchResults([]))
+        .finally(() => setSearching(false));
+    }, 400);
+    return () => { if (searchTimeout.current) clearTimeout(searchTimeout.current); };
+  }, [searchQuery]);
+
+  const addPodcast = async (result: SpotifySearchResult) => {
+    const res = await fetch("/api/podcasts/tracked", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: result.name,
+        spotifyShowId: result.spotifyShowId,
+        relevance: result.publisher,
+      }),
+    });
+    if (res.ok) {
+      const podcast = await res.json();
+      setTrackedPodcasts((prev) => {
+        if (prev.some((p) => p.spotifyShowId === podcast.spotifyShowId)) return prev;
+        return [...prev, podcast];
+      });
+    }
+  };
+
+  const removePodcast = async (id: string) => {
+    const res = await fetch(`/api/podcasts/tracked?id=${id}`, { method: "DELETE" });
+    if (res.ok) {
+      setTrackedPodcasts((prev) => prev.filter((p) => p.id !== id));
+    }
+  };
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
@@ -353,45 +399,147 @@ export default function ResourcesPage() {
       {/* Podcasts */}
       {activeTab === "podcasts" && (
         <div className="space-y-4">
-          {podcasts.map((podcast) => (
-            <Card key={podcast.name} className="hover:border-[var(--primary)] transition-colors">
+          {podcastsLoading && (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-5 w-5 animate-spin text-[var(--muted-foreground)]" />
+            </div>
+          )}
+
+          {!podcastsLoading && trackedPodcasts.map((podcast) => (
+            <Card key={podcast.id} className="hover:border-[var(--primary)] transition-colors">
               <CardContent className="p-5">
                 <div className="flex items-start gap-3">
-                  <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center flex-shrink-0">
+                  <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${podcast.gradient} flex items-center justify-center flex-shrink-0`}>
                     <Headphones className="h-6 w-6 text-white" />
                   </div>
                   <div className="flex-1">
                     <div className="flex items-start justify-between">
                       <div>
                         <h3 className="font-semibold text-sm">{podcast.name}</h3>
-                        <p className="text-xs text-[var(--muted-foreground)]">
-                          {podcast.host} &middot; {podcast.frequency}
-                        </p>
+                        {podcast.relevance && (
+                          <p className="text-xs text-[var(--muted-foreground)]">
+                            {podcast.relevance}
+                          </p>
+                        )}
                       </div>
-                      <a
-                        href={podcast.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs px-3 py-1.5 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 transition-opacity flex items-center gap-1"
-                      >
-                        <ExternalLink className="h-3 w-3" />
-                        Listen
-                      </a>
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={`https://open.spotify.com/show/${podcast.spotifyShowId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs px-3 py-1.5 rounded-full bg-[#1DB954] text-white hover:bg-[#1ed760] transition-colors flex items-center gap-1"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          Spotify
+                        </a>
+                        <button
+                          onClick={() => removePodcast(podcast.id)}
+                          className="p-1.5 rounded-full hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900 dark:hover:text-red-400 transition-colors text-[var(--muted-foreground)]"
+                          title="Remove podcast"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
-                    <p className="text-xs text-[var(--muted-foreground)] leading-relaxed mt-1">
-                      {podcast.description}
-                    </p>
-                    {podcast.latestEpisode && (
-                      <p className="text-xs mt-2 text-[var(--foreground)]">
-                        <span className="text-[var(--muted-foreground)]">Latest: </span>
-                        <span className="font-medium">{podcast.latestEpisode}</span>
-                      </p>
-                    )}
                   </div>
                 </div>
               </CardContent>
             </Card>
           ))}
+
+          {/* Add podcast */}
+          {!podcastsLoading && !showSearch && (
+            <button
+              onClick={() => setShowSearch(true)}
+              className="w-full border-2 border-dashed rounded-lg p-4 text-sm font-medium text-[var(--muted-foreground)] hover:border-[var(--primary)] hover:text-[var(--primary)] transition-colors flex items-center justify-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Add a podcast from Spotify
+            </button>
+          )}
+
+          {showSearch && (
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--muted-foreground)]" />
+                    <input
+                      type="text"
+                      placeholder="Search Spotify for podcasts..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      autoFocus
+                      className="w-full pl-9 pr-3 py-2 rounded-lg border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+                    />
+                  </div>
+                  <button
+                    onClick={() => { setShowSearch(false); setSearchQuery(""); setSearchResults([]); }}
+                    className="p-2 rounded-lg hover:bg-[var(--secondary)] transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {searching && (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="h-4 w-4 animate-spin text-[var(--muted-foreground)]" />
+                  </div>
+                )}
+
+                {!searching && searchResults.length > 0 && (
+                  <div className="space-y-2 max-h-80 overflow-y-auto">
+                    {searchResults.map((result) => {
+                      const alreadyTracked = trackedPodcasts.some(
+                        (p) => p.spotifyShowId === result.spotifyShowId
+                      );
+                      return (
+                        <div
+                          key={result.spotifyShowId}
+                          className="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--secondary)] transition-colors"
+                        >
+                          {result.image ? (
+                            <img
+                              src={result.image}
+                              alt=""
+                              className="w-10 h-10 rounded object-cover flex-shrink-0"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded bg-[var(--secondary)] flex items-center justify-center flex-shrink-0">
+                              <Headphones className="h-5 w-5 text-[var(--muted-foreground)]" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{result.name}</p>
+                            <p className="text-xs text-[var(--muted-foreground)] truncate">
+                              {result.publisher} &middot; {result.totalEpisodes} episodes
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => addPodcast(result)}
+                            disabled={alreadyTracked}
+                            className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors flex-shrink-0 ${
+                              alreadyTracked
+                                ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+                                : "bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90"
+                            }`}
+                          >
+                            {alreadyTracked ? "Added" : "Add"}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {!searching && searchQuery && searchResults.length === 0 && (
+                  <p className="text-xs text-center text-[var(--muted-foreground)] py-4">
+                    No podcasts found
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
 

@@ -12,7 +12,7 @@ import {
   Loader2,
   ExternalLink,
 } from "lucide-react";
-import { formatDuration, TRACKED_PODCASTS, type PodcastWithEpisodes } from "@/lib/podcast";
+import { formatDuration, DEFAULT_PODCASTS, type PodcastWithEpisodes } from "@/lib/podcast";
 
 const SWIPE_THRESHOLD = 100;
 const MAX_SWIPE = 150;
@@ -121,7 +121,7 @@ export function PodcastPicks() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {TRACKED_PODCASTS.map((podcast) => (
+          {DEFAULT_PODCASTS.map((podcast) => (
             <a
               key={podcast.name}
               href={`https://open.spotify.com/show/${podcast.spotifyShowId}`}

@@ -28,6 +28,7 @@ model User {
   careerMilestones     CareerMilestone[]
   resumes              Resume[]
   targetCompanies      TargetCompany[]
+  trackedPodcasts      TrackedPodcast[]
   accounts             Account[]
   sessions             Session[]
 }
@@ -201,6 +202,20 @@ model UserContentInteraction {
   content Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
 
   @@unique([userId, contentId, action])
+}
+
+model TrackedPodcast {
+  id             String   @id @default(cuid())
+  userId         String
+  name           String
+  spotifyShowId  String
+  gradient       String   @default("from-purple-500 to-blue-500")
+  relevance      String?
+  createdAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, spotifyShowId])
 }
 
 model CareerMilestone {
