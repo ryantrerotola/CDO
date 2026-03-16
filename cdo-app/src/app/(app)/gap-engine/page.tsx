@@ -123,24 +123,26 @@ export default function GapEnginePage() {
     setLoading(false);
   };
 
-  const [ingestError, setIngestError] = useState<string | null>(null);
+  const [ingestMessage, setIngestMessage] = useState<{ type: "error" | "success" | "info"; text: string } | null>(null);
 
   const triggerIngestion = async () => {
     setIngesting(true);
-    setIngestError(null);
+    setIngestMessage(null);
     try {
       const res = await fetch("/api/gap-engine/ingest", { method: "POST" });
       const result = await res.json();
       if (!res.ok) {
-        setIngestError(result.error || "Failed to fetch jobs");
-      } else if (result.count === 0 && result.message) {
-        setIngestError(result.message);
+        setIngestMessage({ type: "error", text: result.error || "Failed to fetch jobs" });
+      } else if (result.newCount === 0 && result.message) {
+        setIngestMessage({ type: "info", text: result.message });
+        await fetchGapData(); // Still refresh — frequencies may have been recalculated
       } else {
+        setIngestMessage({ type: "success", text: result.message });
         await fetchGapData();
       }
     } catch (err) {
       console.error("Ingestion failed:", err);
-      setIngestError("Network error — could not reach the server.");
+      setIngestMessage({ type: "error", text: "Network error — could not reach the server." });
     }
     setIngesting(false);
   };
@@ -169,9 +171,15 @@ export default function GapEnginePage() {
         </Button>
       </div>
 
-      {ingestError && (
-        <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-400">
-          {ingestError}
+      {ingestMessage && (
+        <div className={`mb-4 p-3 rounded-lg text-sm ${
+          ingestMessage.type === "error"
+            ? "bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400"
+            : ingestMessage.type === "success"
+            ? "bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400"
+            : "bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-400"
+        }`}>
+          {ingestMessage.text}
         </div>
       )}
 

@@ -106,7 +106,7 @@ export async function POST() {
     const saved = await prisma.learningPlan.create({
       data: {
         userId,
-        plan: plan as unknown as Record<string, unknown>,
+        plan: JSON.parse(JSON.stringify(plan)),
         completedActions: [],
       },
     });

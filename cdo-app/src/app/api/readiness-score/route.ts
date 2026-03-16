@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAuthUserId } from "@/lib/api-auth";
 
+export const dynamic = "force-dynamic";
+
 /**
  * GET /api/readiness-score
  * Composite CDO Readiness Score (0-100):
@@ -69,19 +71,33 @@ export async function GET() {
     const skills = latestResume.skillsFound as unknown[] | null;
     resumeSkillCount = Array.isArray(skills) ? skills.length : 0;
 
-    if (recs?.overallReadiness) {
-      const readiness = String(recs.overallReadiness).toLowerCase();
-      resumeReadiness = readiness;
-      // Map AI readiness assessment to a score
-      if (readiness.includes("strong") || readiness.includes("high") || readiness.includes("ready")) {
-        resumeScore = 80;
-      } else if (readiness.includes("moderate") || readiness.includes("developing") || readiness.includes("growing")) {
-        resumeScore = 55;
-      } else if (readiness.includes("early") || readiness.includes("emerging") || readiness.includes("beginning")) {
-        resumeScore = 30;
+    if (recs?.overallReadiness != null) {
+      const rawReadiness = recs.overallReadiness;
+
+      // The AI returns overallReadiness as a number 0-100
+      if (typeof rawReadiness === "number") {
+        resumeScore = Math.min(Math.max(Math.round(rawReadiness), 0), 100);
+        resumeReadiness = `${resumeScore}`;
       } else {
-        // Fallback: score based on number of CDO-relevant skills found
-        resumeScore = Math.min(Math.round((resumeSkillCount / 20) * 100), 100);
+        // Fallback: try parsing as number first
+        const parsed = Number(rawReadiness);
+        if (!isNaN(parsed) && parsed >= 0 && parsed <= 100) {
+          resumeScore = Math.round(parsed);
+          resumeReadiness = `${resumeScore}`;
+        } else {
+          // Text-based readiness (legacy)
+          const readiness = String(rawReadiness).toLowerCase();
+          resumeReadiness = readiness;
+          if (readiness.includes("strong") || readiness.includes("high") || readiness.includes("ready")) {
+            resumeScore = 80;
+          } else if (readiness.includes("moderate") || readiness.includes("developing") || readiness.includes("growing")) {
+            resumeScore = 55;
+          } else if (readiness.includes("early") || readiness.includes("emerging") || readiness.includes("beginning")) {
+            resumeScore = 30;
+          } else {
+            resumeScore = Math.min(Math.round((resumeSkillCount / 20) * 100), 100);
+          }
+        }
       }
     } else {
       // No readiness field — use skill count as proxy
@@ -98,7 +114,7 @@ export async function GET() {
   );
 
   return NextResponse.json({
-    score: Math.min(composite, 100),
+    score: Math.min(composite, 100) || 0,
     breakdown: {
       resume: {
         score: resumeScore,

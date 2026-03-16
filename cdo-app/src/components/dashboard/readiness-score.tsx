@@ -18,11 +18,21 @@ interface ReadinessData {
 export function ReadinessScore() {
   const [data, setData] = useState<ReadinessData | null>(null);
 
-  useEffect(() => {
-    fetch("/api/readiness-score")
+  const fetchScore = () => {
+    fetch("/api/readiness-score", { cache: "no-store" })
       .then((res) => res.json())
       .then(setData)
       .catch(console.error);
+  };
+
+  useEffect(() => {
+    fetchScore();
+    // Refetch when user navigates back to this tab/page
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") fetchScore();
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, []);
 
   const score = data?.score ?? 0;

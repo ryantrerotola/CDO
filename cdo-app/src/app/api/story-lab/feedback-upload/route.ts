@@ -10,21 +10,14 @@ import type { VisualSlideFeedback } from "@/lib/ai";
  * PPTX is a ZIP of XML files — each slide is in ppt/slide/slideN.xml.
  */
 async function extractPptxSlides(buffer: Buffer): Promise<{ slideNumber: number; text: string }[]> {
-  // Dynamic import to avoid bundling issues
-  const { Readable } = await import("stream");
-  const { createInflate } = await import("zlib");
-
-  // Parse ZIP file manually (PPTX is a ZIP)
   const slides: { slideNumber: number; text: string }[] = [];
 
-  // Use unzipper or parse manually — let's use the built-in approach
-  // We'll use a lightweight ZIP parsing approach
   const JSZip = (await import("jszip")).default;
   const zip = await JSZip.loadAsync(buffer);
 
   // Find all slide XML files
-  const slideFiles: { num: number; file: JSZip.JSZipObject }[] = [];
-  zip.forEach((path, file) => {
+  const slideFiles: { num: number; file: unknown }[] = [];
+  zip.forEach((path: string, file: unknown) => {
     const match = path.match(/^ppt\/slides\/slide(\d+)\.xml$/);
     if (match) {
       slideFiles.push({ num: parseInt(match[1]), file });
@@ -35,7 +28,8 @@ async function extractPptxSlides(buffer: Buffer): Promise<{ slideNumber: number;
   slideFiles.sort((a, b) => a.num - b.num);
 
   for (const { num, file } of slideFiles) {
-    const xml = await file.async("string");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const xml = await (file as any).async("string");
     // Extract text from XML — get all <a:t> elements
     const textParts: string[] = [];
     const regex = /<a:t[^>]*>([\s\S]*?)<\/a:t>/g;
