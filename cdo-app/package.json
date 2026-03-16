@@ -51,5 +51,8 @@
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "prisma": "^5.22.0"
+  },
+  "prisma": {
+    "seed": "npx tsx prisma/seed.ts"
   }
 }
