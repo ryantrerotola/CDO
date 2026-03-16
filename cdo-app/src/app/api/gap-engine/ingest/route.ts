@@ -10,10 +10,18 @@ import { extractSkillsFromJD } from "@/lib/ai";
  */
 export async function POST() {
   try {
+    // Check API credentials first
+    if (!process.env.ADZUNA_APP_ID || !process.env.ADZUNA_APP_KEY) {
+      return NextResponse.json(
+        { error: "Adzuna API credentials not configured. Add ADZUNA_APP_ID and ADZUNA_APP_KEY to your .env file." },
+        { status: 500 }
+      );
+    }
+
     const jobs = await fetchCDOJobs();
 
     if (jobs.length === 0) {
-      return NextResponse.json({ message: "No jobs fetched", count: 0 });
+      return NextResponse.json({ message: "No jobs fetched — Adzuna API returned no results. This may be a rate limit issue.", count: 0 });
     }
 
     let newCount = 0;

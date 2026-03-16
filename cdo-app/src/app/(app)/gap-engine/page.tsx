@@ -123,13 +123,24 @@ export default function GapEnginePage() {
     setLoading(false);
   };
 
+  const [ingestError, setIngestError] = useState<string | null>(null);
+
   const triggerIngestion = async () => {
     setIngesting(true);
+    setIngestError(null);
     try {
-      await fetch("/api/gap-engine/ingest", { method: "POST" });
-      await fetchGapData();
+      const res = await fetch("/api/gap-engine/ingest", { method: "POST" });
+      const result = await res.json();
+      if (!res.ok) {
+        setIngestError(result.error || "Failed to fetch jobs");
+      } else if (result.count === 0 && result.message) {
+        setIngestError(result.message);
+      } else {
+        await fetchGapData();
+      }
     } catch (err) {
       console.error("Ingestion failed:", err);
+      setIngestError("Network error — could not reach the server.");
     }
     setIngesting(false);
   };
@@ -157,6 +168,12 @@ export default function GapEnginePage() {
           {ingesting ? "Refreshing..." : "Refresh Jobs"}
         </Button>
       </div>
+
+      {ingestError && (
+        <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-400">
+          {ingestError}
+        </div>
+      )}
 
       {loading && (
         <div className="text-center py-12">
