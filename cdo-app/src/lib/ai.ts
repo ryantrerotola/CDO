@@ -658,3 +658,171 @@ Respond in JSON:
   const text = msg.content[0].type === "text" ? msg.content[0].text : "{}";
   return parseJsonResponse(text) as { score: number; strengths: string[]; improvements: string[]; modelAnswer: string };
 }
+
+// ── Vision-Based Slide Evaluation ─────────────────────────────────────
+
+export interface VisualSlideFeedback {
+  overallScore: number;
+  contentAssessment: {
+    titleQuality: { score: number; feedback: string; revised: string };
+    messageClarity: { score: number; feedback: string };
+    dataPresentation: { score: number; feedback: string };
+    audienceAlignment: { score: number; feedback: string };
+  };
+  layoutAssessment: {
+    visualHierarchy: { score: number; feedback: string };
+    whiteSpace: { score: number; feedback: string };
+    textDensity: { score: number; feedback: string };
+    chartEffectiveness: { score: number; feedback: string };
+  };
+  revisedContent: {
+    title: string;
+    keyPoints: string[];
+    chartRecommendation: string;
+    layoutSuggestion: string;
+  };
+  narrative: string;
+}
+
+export async function evaluateSlideImage(
+  imageBase64: string,
+  mediaType: "image/png" | "image/jpeg" | "image/gif" | "image/webp",
+  context?: string
+): Promise<VisualSlideFeedback> {
+  const client = getClient();
+
+  const msg = await client.messages.create({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 2000,
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "image",
+            source: {
+              type: "base64",
+              media_type: mediaType,
+              data: imageBase64,
+            },
+          },
+          {
+            type: "text",
+            text: `You are an executive communication coach specializing in CDO/data leadership presentations. Analyze this slide image for BOTH content quality AND visual/layout design.
+
+${context ? `Context: ${context}` : ""}
+
+Evaluate the CONTENT:
+1. Title quality — Is it assertive? States a conclusion, not a topic?
+2. Message clarity — Is there one clear point?
+3. Data presentation — Are numbers/data used effectively?
+4. Audience alignment — Would a C-suite audience find this compelling?
+
+Evaluate the LAYOUT/DESIGN:
+1. Visual hierarchy — Does the eye flow naturally to the key message?
+2. White space — Is there enough breathing room, or is it cluttered?
+3. Text density — Too much text? Slides should support speaking, not replace it
+4. Chart/visual effectiveness — Are visuals adding clarity or just decoration?
+
+Be direct and opinionated. This is coaching, not diplomacy.
+
+Respond in JSON:
+{
+  "overallScore": 1-10,
+  "contentAssessment": {
+    "titleQuality": { "score": 1-10, "feedback": "specific feedback", "revised": "better title" },
+    "messageClarity": { "score": 1-10, "feedback": "specific feedback" },
+    "dataPresentation": { "score": 1-10, "feedback": "specific feedback" },
+    "audienceAlignment": { "score": 1-10, "feedback": "specific feedback" }
+  },
+  "layoutAssessment": {
+    "visualHierarchy": { "score": 1-10, "feedback": "specific feedback" },
+    "whiteSpace": { "score": 1-10, "feedback": "specific feedback" },
+    "textDensity": { "score": 1-10, "feedback": "specific feedback" },
+    "chartEffectiveness": { "score": 1-10, "feedback": "specific feedback" }
+  },
+  "revisedContent": {
+    "title": "improved assertive title",
+    "keyPoints": ["bullet 1", "bullet 2", "bullet 3"],
+    "chartRecommendation": "what chart to use and why",
+    "layoutSuggestion": "specific layout improvement"
+  },
+  "narrative": "3-4 sentence overall assessment with the single most impactful change they should make"
+}`,
+          },
+        ],
+      },
+    ],
+  });
+
+  const text = msg.content[0].type === "text" ? msg.content[0].text : "{}";
+  return parseJsonResponse(text) as VisualSlideFeedback;
+}
+
+export async function evaluateSlideText(
+  slideTexts: { slideNumber: number; text: string }[]
+): Promise<VisualSlideFeedback[]> {
+  const client = getClient();
+  const results: VisualSlideFeedback[] = [];
+
+  for (const slide of slideTexts) {
+    const msg = await client.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 2000,
+      messages: [
+        {
+          role: "user",
+          content: `You are an executive communication coach specializing in CDO/data leadership presentations. Analyze the text content extracted from slide ${slide.slideNumber} of a PowerPoint deck.
+
+SLIDE TEXT:
+${slide.text}
+
+Note: This is text extracted from a PPTX file, so you cannot evaluate visual layout. Focus on content quality and suggest layout improvements.
+
+Evaluate the CONTENT:
+1. Title quality — Is the title assertive? States a conclusion, not a topic?
+2. Message clarity — Is there one clear point?
+3. Data presentation — Are numbers/data used effectively?
+4. Audience alignment — Would a C-suite audience find this compelling?
+
+For LAYOUT, provide recommendations based on the content structure:
+1. Visual hierarchy — How should this content be structured visually?
+2. White space — Is there too much text for one slide?
+3. Text density — Should any content be cut or moved to speaker notes?
+4. Chart/visual suggestions — Would a chart or visual improve this?
+
+Be direct and opinionated. This is coaching, not diplomacy.
+
+Respond in JSON:
+{
+  "overallScore": 1-10,
+  "contentAssessment": {
+    "titleQuality": { "score": 1-10, "feedback": "specific feedback", "revised": "better title" },
+    "messageClarity": { "score": 1-10, "feedback": "specific feedback" },
+    "dataPresentation": { "score": 1-10, "feedback": "specific feedback" },
+    "audienceAlignment": { "score": 1-10, "feedback": "specific feedback" }
+  },
+  "layoutAssessment": {
+    "visualHierarchy": { "score": 1-10, "feedback": "specific recommendation" },
+    "whiteSpace": { "score": 1-10, "feedback": "specific recommendation" },
+    "textDensity": { "score": 1-10, "feedback": "specific recommendation" },
+    "chartEffectiveness": { "score": 1-10, "feedback": "specific recommendation" }
+  },
+  "revisedContent": {
+    "title": "improved assertive title",
+    "keyPoints": ["bullet 1", "bullet 2", "bullet 3"],
+    "chartRecommendation": "what chart to use and why",
+    "layoutSuggestion": "specific layout improvement"
+  },
+  "narrative": "3-4 sentence overall assessment with the single most impactful change they should make"
+}`,
+        },
+      ],
+    });
+
+    const text = msg.content[0].type === "text" ? msg.content[0].text : "{}";
+    results.push(parseJsonResponse(text) as VisualSlideFeedback);
+  }
+
+  return results;
+}

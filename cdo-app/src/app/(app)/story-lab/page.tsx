@@ -24,6 +24,10 @@ import {
   Square,
   RefreshCw,
   AlertTriangle,
+  Upload,
+  Image,
+  FileSpreadsheet,
+  X,
 } from "lucide-react";
 import {
   MODULE_A_LESSONS,
@@ -31,9 +35,10 @@ import {
   DECK_TEMPLATES,
   MODULE_NAMES,
 } from "@/data/story-lab-content";
-import type { SlideFeedback } from "@/lib/ai";
+import type { SlideFeedback, VisualSlideFeedback } from "@/lib/ai";
 
 type ModuleId = "A" | "B" | "C" | "D" | "E";
+type ModuleCMode = "text" | "upload";
 
 const MODULE_ICONS: Record<string, React.ElementType> = {
   A: BookOpen,
@@ -55,9 +60,16 @@ export default function StoryLabPage() {
   const [loading, setLoading] = useState(false);
 
   // Module C state
+  const [moduleCMode, setModuleCMode] = useState<ModuleCMode>("text");
   const [slides, setSlides] = useState<SlideInput[]>([{ title: "", body: "", chartIntent: "" }]);
   const [slideFeedback, setSlideFeedback] = useState<SlideFeedback[] | null>(null);
   const [deckFeedback, setDeckFeedback] = useState<{ score: number; feedback: string; suggestions: string[] } | null>(null);
+
+  // Module C upload state
+  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
+  const [uploadContext, setUploadContext] = useState("");
+  const [uploadResults, setUploadResults] = useState<{ type: string; fileName: string; feedbacks: VisualSlideFeedback[] }[] | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Module D state
   const [selectedScenario, setSelectedScenario] = useState<typeof SCENARIOS[0] | null>(null);
@@ -132,6 +144,43 @@ export default function StoryLabPage() {
       }
     } catch {}
     setLoading(false);
+  };
+
+  // Module C: Upload slides for visual feedback
+  const submitUpload = async () => {
+    if (uploadFiles.length === 0) return;
+    setLoading(true);
+    setUploadResults(null);
+    try {
+      const formData = new FormData();
+      uploadFiles.forEach((f) => formData.append("files", f));
+      if (uploadContext.trim()) formData.append("context", uploadContext.trim());
+
+      const res = await fetch("/api/story-lab/feedback-upload", {
+        method: "POST",
+        body: formData,
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUploadResults(data.results);
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to analyze slides");
+      }
+    } catch {
+      alert("Failed to upload slides. Please try again.");
+    }
+    setLoading(false);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    setUploadFiles((prev) => [...prev, ...files]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const removeFile = (index: number) => {
+    setUploadFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   // Module D: Start scenario
@@ -323,119 +372,321 @@ export default function StoryLabPage() {
       {/* ── Module C: AI Slide Feedback ────────────────────────────── */}
       {activeModule === "C" && (
         <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">Draft Your Slides</CardTitle>
-              <p className="text-xs text-[var(--muted-foreground)]">
-                Enter your slide content and get AI feedback on executive readiness.
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {slides.map((slide, i) => (
-                <div key={i} className="p-4 border rounded-lg space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Slide {i + 1}</span>
-                    {slides.length > 1 && (
-                      <button
-                        onClick={() => setSlides(slides.filter((_, j) => j !== i))}
-                        className="text-xs text-red-500 hover:underline"
-                      >
-                        Remove
-                      </button>
-                    )}
-                  </div>
-                  <Input
-                    placeholder="Slide title (make it assertive!)"
-                    value={slide.title}
-                    onChange={(e) => updateSlide(i, "title", e.target.value)}
-                  />
-                  <Textarea
-                    placeholder="Slide body content..."
-                    value={slide.body}
-                    onChange={(e) => updateSlide(i, "body", e.target.value)}
-                    rows={3}
-                  />
-                  <Select
-                    value={slide.chartIntent}
-                    onChange={(e) => updateSlide(i, "chartIntent", e.target.value)}
-                  >
-                    <option value="">Chart type (optional)</option>
-                    <option value="bar">Bar Chart</option>
-                    <option value="line">Line Chart</option>
-                    <option value="pie">Pie Chart</option>
-                    <option value="scatter">Scatter Plot</option>
-                    <option value="table">Table</option>
-                    <option value="none">No Chart</option>
-                  </Select>
-                </div>
-              ))}
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={addSlide}>
-                  Add Slide
-                </Button>
-                <Button size="sm" onClick={submitSlides} disabled={loading}>
-                  {loading ? <RefreshCw className="h-4 w-4 mr-1 animate-spin" /> : <Sparkles className="h-4 w-4 mr-1" />}
-                  {loading ? "Analyzing..." : "Get Feedback"}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Mode toggle */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => setModuleCMode("text")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                moduleCMode === "text"
+                  ? "bg-[var(--primary)] text-[var(--primary-foreground)]"
+                  : "bg-[var(--secondary)] text-[var(--secondary-foreground)] hover:bg-[var(--accent)]"
+              }`}
+            >
+              <FileText className="h-4 w-4" />
+              Type Content
+            </button>
+            <button
+              onClick={() => setModuleCMode("upload")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                moduleCMode === "upload"
+                  ? "bg-[var(--primary)] text-[var(--primary-foreground)]"
+                  : "bg-[var(--secondary)] text-[var(--secondary-foreground)] hover:bg-[var(--accent)]"
+              }`}
+            >
+              <Upload className="h-4 w-4" />
+              Upload Slides
+            </button>
+          </div>
 
-          {/* Feedback Results */}
-          {slideFeedback && slideFeedback.map((fb, i) => (
-            <Card key={i} className="border-[var(--primary)] border-opacity-30">
-              <CardHeader>
-                <CardTitle className="text-sm flex items-center gap-2">
-                  Slide {i + 1} Feedback
-                  <Badge variant={fb.overallScore >= 7 ? "success" : fb.overallScore >= 4 ? "warning" : "destructive"}>
-                    {fb.overallScore}/10
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-sm">{fb.narrative}</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { label: "Assertive Title", ...fb.titleAssertive },
-                    { label: "One Point", ...fb.onePoint },
-                    { label: "Chart Choice", ...fb.chartChoice },
-                    { label: "Visual Hierarchy", ...fb.visualHierarchy },
-                  ].map((check) => (
-                    <div
-                      key={check.label}
-                      className={`p-2 rounded text-xs ${check.pass ? "bg-green-50 dark:bg-green-950/30" : "bg-red-50 dark:bg-red-950/30"}`}
-                    >
-                      <span className="font-medium">{check.pass ? "✓" : "✗"} {check.label}</span>
-                      <p className="text-[var(--muted-foreground)] mt-0.5">{check.feedback}</p>
+          {/* Text input mode */}
+          {moduleCMode === "text" && (
+            <>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Draft Your Slides</CardTitle>
+                  <p className="text-xs text-[var(--muted-foreground)]">
+                    Enter your slide content and get AI feedback on executive readiness.
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {slides.map((slide, i) => (
+                    <div key={i} className="p-4 border rounded-lg space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">Slide {i + 1}</span>
+                        {slides.length > 1 && (
+                          <button
+                            onClick={() => setSlides(slides.filter((_, j) => j !== i))}
+                            className="text-xs text-red-500 hover:underline"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                      <Input
+                        placeholder="Slide title (make it assertive!)"
+                        value={slide.title}
+                        onChange={(e) => updateSlide(i, "title", e.target.value)}
+                      />
+                      <Textarea
+                        placeholder="Slide body content..."
+                        value={slide.body}
+                        onChange={(e) => updateSlide(i, "body", e.target.value)}
+                        rows={3}
+                      />
+                      <Select
+                        value={slide.chartIntent}
+                        onChange={(e) => updateSlide(i, "chartIntent", e.target.value)}
+                      >
+                        <option value="">Chart type (optional)</option>
+                        <option value="bar">Bar Chart</option>
+                        <option value="line">Line Chart</option>
+                        <option value="pie">Pie Chart</option>
+                        <option value="scatter">Scatter Plot</option>
+                        <option value="table">Table</option>
+                        <option value="none">No Chart</option>
+                      </Select>
                     </div>
                   ))}
-                </div>
-                {fb.revisedSlide && (
-                  <div className="p-3 rounded-lg bg-[var(--accent)]">
-                    <p className="text-xs font-semibold mb-1">Revised Version:</p>
-                    <p className="text-sm font-medium">{fb.revisedSlide.title}</p>
-                    <p className="text-xs text-[var(--muted-foreground)] mt-1">{fb.revisedSlide.body}</p>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={addSlide}>
+                      Add Slide
+                    </Button>
+                    <Button size="sm" onClick={submitSlides} disabled={loading}>
+                      {loading ? <RefreshCw className="h-4 w-4 mr-1 animate-spin" /> : <Sparkles className="h-4 w-4 mr-1" />}
+                      {loading ? "Analyzing..." : "Get Feedback"}
+                    </Button>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
 
-          {deckFeedback && (
-            <Card className="border-[var(--primary)] border-opacity-30">
-              <CardContent className="p-5">
-                <h3 className="font-semibold text-sm mb-2">Deck Coherence: {deckFeedback.score}/10</h3>
-                <p className="text-sm mb-3">{deckFeedback.feedback}</p>
-                <ul className="space-y-1">
-                  {deckFeedback.suggestions.map((s, i) => (
-                    <li key={i} className="text-xs flex items-start gap-2">
-                      <ChevronRight className="h-3 w-3 mt-0.5 text-[var(--primary)]" />
-                      {s}
-                    </li>
+              {/* Text Feedback Results */}
+              {slideFeedback && slideFeedback.map((fb, i) => (
+                <Card key={i} className="border-[var(--primary)] border-opacity-30">
+                  <CardHeader>
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      Slide {i + 1} Feedback
+                      <Badge variant={fb.overallScore >= 7 ? "success" : fb.overallScore >= 4 ? "warning" : "destructive"}>
+                        {fb.overallScore}/10
+                      </Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <p className="text-sm">{fb.narrative}</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { label: "Assertive Title", ...fb.titleAssertive },
+                        { label: "One Point", ...fb.onePoint },
+                        { label: "Chart Choice", ...fb.chartChoice },
+                        { label: "Visual Hierarchy", ...fb.visualHierarchy },
+                      ].map((check) => (
+                        <div
+                          key={check.label}
+                          className={`p-2 rounded text-xs ${check.pass ? "bg-green-50 dark:bg-green-950/30" : "bg-red-50 dark:bg-red-950/30"}`}
+                        >
+                          <span className="font-medium">{check.pass ? "✓" : "✗"} {check.label}</span>
+                          <p className="text-[var(--muted-foreground)] mt-0.5">{check.feedback}</p>
+                        </div>
+                      ))}
+                    </div>
+                    {fb.revisedSlide && (
+                      <div className="p-3 rounded-lg bg-[var(--accent)]">
+                        <p className="text-xs font-semibold mb-1">Revised Version:</p>
+                        <p className="text-sm font-medium">{fb.revisedSlide.title}</p>
+                        <p className="text-xs text-[var(--muted-foreground)] mt-1">{fb.revisedSlide.body}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+
+              {deckFeedback && (
+                <Card className="border-[var(--primary)] border-opacity-30">
+                  <CardContent className="p-5">
+                    <h3 className="font-semibold text-sm mb-2">Deck Coherence: {deckFeedback.score}/10</h3>
+                    <p className="text-sm mb-3">{deckFeedback.feedback}</p>
+                    <ul className="space-y-1">
+                      {deckFeedback.suggestions.map((s, i) => (
+                        <li key={i} className="text-xs flex items-start gap-2">
+                          <ChevronRight className="h-3 w-3 mt-0.5 text-[var(--primary)]" />
+                          {s}
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              )}
+            </>
+          )}
+
+          {/* Upload mode */}
+          {moduleCMode === "upload" && (
+            <>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Upload className="h-4 w-4 text-[var(--primary)]" />
+                    Upload Slides for Review
+                  </CardTitle>
+                  <p className="text-xs text-[var(--muted-foreground)]">
+                    Upload slide screenshots (.png, .jpg) for visual + content critique, or a .pptx file for content analysis.
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Drop zone */}
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="border-2 border-dashed rounded-xl p-8 text-center cursor-pointer hover:border-[var(--primary)] hover:bg-[var(--accent)] transition-colors"
+                  >
+                    <Upload className="h-8 w-8 mx-auto mb-3 text-[var(--muted-foreground)]" />
+                    <p className="text-sm font-medium mb-1">Click to upload slides</p>
+                    <p className="text-xs text-[var(--muted-foreground)]">
+                      .pptx, .png, .jpg, .webp — Upload multiple images for multi-slide review
+                    </p>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      className="hidden"
+                      accept=".pptx,.png,.jpg,.jpeg,.gif,.webp"
+                      multiple
+                      onChange={handleFileSelect}
+                    />
+                  </div>
+
+                  {/* File list */}
+                  {uploadFiles.length > 0 && (
+                    <div className="space-y-2">
+                      {uploadFiles.map((file, i) => (
+                        <div key={i} className="flex items-center gap-3 p-2 border rounded-lg">
+                          {file.name.endsWith(".pptx") ? (
+                            <FileSpreadsheet className="h-4 w-4 text-orange-500" />
+                          ) : (
+                            <Image className="h-4 w-4 text-blue-500" />
+                          )}
+                          <span className="text-sm flex-1 truncate">{file.name}</span>
+                          <span className="text-xs text-[var(--muted-foreground)]">
+                            {(file.size / 1024).toFixed(0)}KB
+                          </span>
+                          <button onClick={() => removeFile(i)} className="p-1 hover:bg-[var(--accent)] rounded">
+                            <X className="h-3 w-3 text-[var(--muted-foreground)]" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Optional context */}
+                  <Textarea
+                    placeholder="Optional context: Who is the audience? What's the goal of this presentation?"
+                    value={uploadContext}
+                    onChange={(e) => setUploadContext(e.target.value)}
+                    rows={2}
+                  />
+
+                  <Button onClick={submitUpload} disabled={loading || uploadFiles.length === 0}>
+                    {loading ? <RefreshCw className="h-4 w-4 mr-1 animate-spin" /> : <Sparkles className="h-4 w-4 mr-1" />}
+                    {loading ? "Analyzing slides..." : `Analyze ${uploadFiles.length} file${uploadFiles.length !== 1 ? "s" : ""}`}
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Upload Feedback Results */}
+              {uploadResults && uploadResults.map((result, ri) => (
+                <div key={ri} className="space-y-4">
+                  {result.feedbacks.map((fb, fi) => (
+                    <Card key={`${ri}-${fi}`} className="border-[var(--primary)] border-opacity-30">
+                      <CardHeader>
+                        <CardTitle className="text-sm flex items-center gap-2">
+                          {result.type === "pptx" ? (
+                            <FileSpreadsheet className="h-4 w-4 text-orange-500" />
+                          ) : (
+                            <Image className="h-4 w-4 text-blue-500" />
+                          )}
+                          {result.type === "pptx" ? `Slide ${fi + 1}` : result.fileName}
+                          <Badge variant={fb.overallScore >= 7 ? "success" : fb.overallScore >= 4 ? "warning" : "destructive"}>
+                            {fb.overallScore}/10
+                          </Badge>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <p className="text-sm">{fb.narrative}</p>
+
+                        {/* Content Assessment */}
+                        <div>
+                          <h4 className="text-xs font-semibold mb-2 text-[var(--muted-foreground)] uppercase tracking-wide">Content</h4>
+                          <div className="grid grid-cols-2 gap-2">
+                            {[
+                              { label: "Title Quality", ...fb.contentAssessment.titleQuality },
+                              { label: "Message Clarity", ...fb.contentAssessment.messageClarity },
+                              { label: "Data Presentation", ...fb.contentAssessment.dataPresentation },
+                              { label: "Audience Alignment", ...fb.contentAssessment.audienceAlignment },
+                            ].map((check) => (
+                              <div
+                                key={check.label}
+                                className={`p-2 rounded text-xs ${check.score >= 7 ? "bg-green-50 dark:bg-green-950/30" : check.score >= 4 ? "bg-amber-50 dark:bg-amber-950/30" : "bg-red-50 dark:bg-red-950/30"}`}
+                              >
+                                <div className="flex items-center justify-between mb-0.5">
+                                  <span className="font-medium">{check.label}</span>
+                                  <span className="font-bold">{check.score}/10</span>
+                                </div>
+                                <p className="text-[var(--muted-foreground)]">{check.feedback}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Layout Assessment */}
+                        <div>
+                          <h4 className="text-xs font-semibold mb-2 text-[var(--muted-foreground)] uppercase tracking-wide">Layout & Design</h4>
+                          <div className="grid grid-cols-2 gap-2">
+                            {[
+                              { label: "Visual Hierarchy", ...fb.layoutAssessment.visualHierarchy },
+                              { label: "White Space", ...fb.layoutAssessment.whiteSpace },
+                              { label: "Text Density", ...fb.layoutAssessment.textDensity },
+                              { label: "Chart Effectiveness", ...fb.layoutAssessment.chartEffectiveness },
+                            ].map((check) => (
+                              <div
+                                key={check.label}
+                                className={`p-2 rounded text-xs ${check.score >= 7 ? "bg-green-50 dark:bg-green-950/30" : check.score >= 4 ? "bg-amber-50 dark:bg-amber-950/30" : "bg-red-50 dark:bg-red-950/30"}`}
+                              >
+                                <div className="flex items-center justify-between mb-0.5">
+                                  <span className="font-medium">{check.label}</span>
+                                  <span className="font-bold">{check.score}/10</span>
+                                </div>
+                                <p className="text-[var(--muted-foreground)]">{check.feedback}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Revised Content */}
+                        <div className="p-3 rounded-lg bg-[var(--accent)]">
+                          <p className="text-xs font-semibold mb-2">Recommended Revision</p>
+                          <p className="text-sm font-medium mb-1">{fb.revisedContent.title}</p>
+                          <ul className="space-y-1 mb-2">
+                            {fb.revisedContent.keyPoints.map((point, pi) => (
+                              <li key={pi} className="text-xs flex items-start gap-1.5">
+                                <ChevronRight className="h-3 w-3 mt-0.5 text-[var(--primary)]" />
+                                {point}
+                              </li>
+                            ))}
+                          </ul>
+                          {fb.revisedContent.chartRecommendation && (
+                            <p className="text-xs text-[var(--muted-foreground)]">
+                              <span className="font-medium">Chart: </span>{fb.revisedContent.chartRecommendation}
+                            </p>
+                          )}
+                          {fb.revisedContent.layoutSuggestion && (
+                            <p className="text-xs text-[var(--muted-foreground)] mt-1">
+                              <span className="font-medium">Layout: </span>{fb.revisedContent.layoutSuggestion}
+                            </p>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
                   ))}
-                </ul>
-              </CardContent>
-            </Card>
+                </div>
+              ))}
+            </>
           )}
         </div>
       )}
