@@ -4,12 +4,38 @@ import bcrypt from "bcryptjs";
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, email, password } = await request.json();
+    const { name, email, password, inviteCode } = await request.json();
 
     if (!email || !password) {
       return NextResponse.json(
         { error: "Email and password are required" },
         { status: 400 }
+      );
+    }
+
+    if (!inviteCode) {
+      return NextResponse.json(
+        { error: "An invite code is required to sign up" },
+        { status: 400 }
+      );
+    }
+
+    // Validate invite code
+    const invite = await prisma.inviteCode.findUnique({
+      where: { code: inviteCode },
+    });
+
+    if (!invite) {
+      return NextResponse.json(
+        { error: "Invalid invite code" },
+        { status: 403 }
+      );
+    }
+
+    if (invite.usedBy) {
+      return NextResponse.json(
+        { error: "This invite code has already been used" },
+        { status: 403 }
       );
     }
 
@@ -36,6 +62,12 @@ export async function POST(request: NextRequest) {
         email,
         password: hashedPassword,
       },
+    });
+
+    // Mark invite code as used
+    await prisma.inviteCode.update({
+      where: { code: inviteCode },
+      data: { usedBy: user.id, usedAt: new Date() },
     });
 
     return NextResponse.json(

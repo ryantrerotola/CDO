@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { ResumeAnalysis, SkillAssessment } from "@/types";
+import { ALL_SKILL_NAMES } from "@/data/taxonomy";
 
 const getClient = () => {
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -382,4 +383,278 @@ Respond in JSON:
 
   const result = msg.content[0].type === "text" ? msg.content[0].text : "";
   return parseJsonResponse(result) as { post: string; hashtags: string[]; tips: string[] };
+}
+
+// ── Gap Engine AI Functions ─────────────────────────────────────────
+
+/**
+ * Extract canonical skills from a job description.
+ * Returns an array of skill names from the taxonomy.
+ */
+export async function extractSkillsFromJD(description: string): Promise<string[]> {
+  const client = getClient();
+
+  const msg = await client.messages.create({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 500,
+    messages: [
+      {
+        role: "user",
+        content: `Extract the skills required from this job description. Map each skill to EXACTLY one of the following canonical skill names. Only return skills that are clearly mentioned or implied.
+
+CANONICAL SKILLS:
+${ALL_SKILL_NAMES.join(", ")}
+
+JOB DESCRIPTION:
+${description.slice(0, 6000)}
+
+Respond with a JSON array of skill names. Example: ["Data Strategy", "Board Communication", "Data Architecture"]
+Return ONLY the JSON array, nothing else.`,
+      },
+    ],
+  });
+
+  const text = msg.content[0].type === "text" ? msg.content[0].text : "[]";
+  const skills = parseJsonResponse(text) as string[];
+  // Filter to only canonical names
+  return skills.filter((s) => ALL_SKILL_NAMES.includes(s));
+}
+
+/**
+ * Generate a natural language gap narrative for the user's top gaps.
+ */
+export async function generateGapNarrative(
+  gaps: { skillName: string; clusterName: string; marketFrequency: number; userProficiency: number; gapScore: number }[]
+): Promise<string> {
+  const client = getClient();
+
+  const msg = await client.messages.create({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 600,
+    messages: [
+      {
+        role: "user",
+        content: `You are a CDO career coach analyzing a data leader's skill gaps against the current CDO job market.
+
+Here are their top skill gaps (sorted by severity):
+${gaps.map((g, i) => `${i + 1}. ${g.skillName} (${g.clusterName}): appears in ${g.marketFrequency}% of CDO job postings, user proficiency: ${g.userProficiency}/4`).join("\n")}
+
+Write a 3-4 sentence personalized gap analysis in second person ("Your biggest gap is..."). Be specific — reference actual percentages and skill names. Be direct and actionable, not generic. End with one specific recommendation for what to work on first.`,
+      },
+    ],
+  });
+
+  return msg.content[0].type === "text" ? msg.content[0].text : "";
+}
+
+/**
+ * Generate a learning plan based on gap analysis and skill graph state.
+ */
+export async function generateLearningPlan(context: {
+  topGaps: { skillName: string; clusterName: string; marketFrequency: number; userProficiency: number }[];
+  completedModules: string[];
+  activeGoals: string[];
+  readinessScore: number;
+}): Promise<{
+  thirtyDay: { week: number; focus: string; actions: string[] }[];
+  sixtyDay: { week: number; focus: string; actions: string[] }[];
+  ninetyDay: { week: number; focus: string; actions: string[] }[];
+}> {
+  const client = getClient();
+
+  const msg = await client.messages.create({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 3000,
+    messages: [
+      {
+        role: "user",
+        content: `You are a CDO career coach. Create a 30/60/90 day learning plan for a data leader targeting a CDO role.
+
+CURRENT STATE:
+- CDO Readiness Score: ${context.readinessScore}/100
+- Top skill gaps: ${context.topGaps.map((g) => `${g.skillName} (${g.marketFrequency}% market demand, ${g.userProficiency}/4 proficiency)`).join(", ")}
+- Story Lab modules completed: ${context.completedModules.length > 0 ? context.completedModules.join(", ") : "None yet"}
+- Active goals: ${context.activeGoals.length > 0 ? context.activeGoals.join(", ") : "None yet"}
+
+Create a structured plan with specific, actionable weekly tasks. Each week should have a clear focus area and 3-4 concrete actions.
+
+Respond in JSON:
+{
+  "thirtyDay": [{ "week": 1, "focus": "...", "actions": ["...", "...", "..."] }, ...],
+  "sixtyDay": [{ "week": 5, "focus": "...", "actions": ["...", "...", "..."] }, ...],
+  "ninetyDay": [{ "week": 9, "focus": "...", "actions": ["...", "...", "..."] }, ...]
+}
+
+Each section should have 4 weeks. Be specific — name actual frameworks, books, exercises. Don't be generic.`,
+      },
+    ],
+  });
+
+  const text = msg.content[0].type === "text" ? msg.content[0].text : "{}";
+  return parseJsonResponse(text) as {
+    thirtyDay: { week: number; focus: string; actions: string[] }[];
+    sixtyDay: { week: number; focus: string; actions: string[] }[];
+    ninetyDay: { week: number; focus: string; actions: string[] }[];
+  };
+}
+
+// ── Story Lab AI Functions ──────────────────────────────────────────
+
+export interface SlideFeedback {
+  overallScore: number;
+  titleAssertive: { pass: boolean; feedback: string; revised: string };
+  onePoint: { pass: boolean; feedback: string };
+  chartChoice: { pass: boolean; feedback: string; suggestion: string };
+  visualHierarchy: { pass: boolean; feedback: string };
+  revisedSlide: { title: string; body: string; chartIntent: string };
+  narrative: string;
+}
+
+export async function evaluateSlide(slide: {
+  title: string;
+  body: string;
+  chartIntent: string;
+}): Promise<SlideFeedback> {
+  const client = getClient();
+
+  const msg = await client.messages.create({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 1500,
+    messages: [
+      {
+        role: "user",
+        content: `You are an executive communication coach specializing in data leadership presentations. Evaluate this slide draft for a CDO-level audience.
+
+SLIDE DRAFT:
+Title: ${slide.title}
+Body: ${slide.body}
+Chart Intent: ${slide.chartIntent || "None specified"}
+
+Evaluate against these criteria:
+1. Is the title assertive? (States a conclusion, not a topic. "Revenue grew 23% YoY" not "Revenue Analysis")
+2. One clear point? (Slide communicates exactly one idea)
+3. Right chart choice? (Chart type matches the point being made)
+4. Visual hierarchy? (Information is structured for quick scanning)
+
+Be opinionated — tell them exactly what's wrong and how to fix it. This is coaching, not diplomacy.
+
+Respond in JSON:
+{
+  "overallScore": 1-10,
+  "titleAssertive": { "pass": true/false, "feedback": "specific feedback", "revised": "better title" },
+  "onePoint": { "pass": true/false, "feedback": "specific feedback" },
+  "chartChoice": { "pass": true/false, "feedback": "specific feedback", "suggestion": "recommended chart type" },
+  "visualHierarchy": { "pass": true/false, "feedback": "specific feedback" },
+  "revisedSlide": { "title": "improved title", "body": "improved body content", "chartIntent": "recommended chart" },
+  "narrative": "2-3 sentence overall assessment — direct and actionable"
+}`,
+      },
+    ],
+  });
+
+  const text = msg.content[0].type === "text" ? msg.content[0].text : "{}";
+  return parseJsonResponse(text) as SlideFeedback;
+}
+
+export async function evaluateDeckCoherence(slides: {
+  title: string;
+  body: string;
+  chartIntent: string;
+}[]): Promise<{ score: number; feedback: string; suggestions: string[] }> {
+  const client = getClient();
+
+  const msg = await client.messages.create({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 1000,
+    messages: [
+      {
+        role: "user",
+        content: `Evaluate this deck for narrative coherence. Does it tell a clear story from slide to slide?
+
+SLIDES:
+${slides.map((s, i) => `Slide ${i + 1}: "${s.title}" — ${s.body.slice(0, 200)}`).join("\n")}
+
+Evaluate: Does it have a clear narrative arc? Does each slide build on the previous? Is there a compelling conclusion? Is anything missing?
+
+Respond in JSON:
+{
+  "score": 1-10,
+  "feedback": "2-3 sentence assessment",
+  "suggestions": ["specific improvement 1", "specific improvement 2", "specific improvement 3"]
+}`,
+      },
+    ],
+  });
+
+  const text = msg.content[0].type === "text" ? msg.content[0].text : "{}";
+  return parseJsonResponse(text) as { score: number; feedback: string; suggestions: string[] };
+}
+
+export async function generateTalkingPoints(slides: {
+  title: string;
+  body: string;
+}[]): Promise<{ slideIndex: number; points: string[]; transitionToNext: string }[]> {
+  const client = getClient();
+
+  const msg = await client.messages.create({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 2000,
+    messages: [
+      {
+        role: "user",
+        content: `Generate talking points and transitions for this executive presentation.
+
+SLIDES:
+${slides.map((s, i) => `Slide ${i + 1}: "${s.title}" — ${s.body.slice(0, 300)}`).join("\n")}
+
+For each slide, provide 3-4 talking points (what to say, not what's on the slide) and a transition to the next slide.
+
+Respond in JSON array:
+[{ "slideIndex": 0, "points": ["...", "..."], "transitionToNext": "..." }]`,
+      },
+    ],
+  });
+
+  const text = msg.content[0].type === "text" ? msg.content[0].text : "[]";
+  return parseJsonResponse(text) as { slideIndex: number; points: string[]; transitionToNext: string }[];
+}
+
+export async function evaluateScenarioResponse(scenario: {
+  title: string;
+  prompt: string;
+  slides: { title: string; body: string }[];
+  timeSpent: number;
+}): Promise<{ score: number; strengths: string[]; improvements: string[]; modelAnswer: string }> {
+  const client = getClient();
+
+  const msg = await client.messages.create({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 1500,
+    messages: [
+      {
+        role: "user",
+        content: `Evaluate this CDO's response to an executive briefing scenario.
+
+SCENARIO: ${scenario.title}
+PROMPT: ${scenario.prompt}
+TIME SPENT: ${Math.round(scenario.timeSpent / 60)} minutes
+
+THEIR RESPONSE (${scenario.slides.length} slides):
+${scenario.slides.map((s, i) => `Slide ${i + 1}: "${s.title}" — ${s.body}`).join("\n")}
+
+Evaluate: Did they address the scenario effectively? Is it executive-ready? Is it conclusion-first? Would a board/C-suite audience be satisfied?
+
+Respond in JSON:
+{
+  "score": 1-10,
+  "strengths": ["what they did well"],
+  "improvements": ["what to improve"],
+  "modelAnswer": "A brief description of what an excellent response would look like (2-3 sentences)"
+}`,
+      },
+    ],
+  });
+
+  const text = msg.content[0].type === "text" ? msg.content[0].text : "{}";
+  return parseJsonResponse(text) as { score: number; strengths: string[]; improvements: string[]; modelAnswer: string };
 }

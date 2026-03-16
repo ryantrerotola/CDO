@@ -31,6 +31,9 @@ model User {
   trackedPodcasts      TrackedPodcast[]
   accounts             Account[]
   sessions             Session[]
+  skillProficiencies   UserSkillProficiency[]
+  storyLabProgress     StoryLabProgress[]
+  slideSubmissions     SlideSubmission[]
 }
 
 model Account {
@@ -126,6 +129,7 @@ model Goal {
   deadline     DateTime?
   status       GoalStatus    @default(ACTIVE)
   parentGoalId String?
+  skillId      String?
   priority     Int           @default(0)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
@@ -227,6 +231,133 @@ model CareerMilestone {
   completedDate DateTime?
   order         Int       @default(0)
   createdAt     DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ── Invite-Only Auth ─────────────────────────────────────────────────
+
+model InviteCode {
+  id        String    @id @default(cuid())
+  code      String    @unique
+  usedBy    String?
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+// ── Skill Taxonomy ───────────────────────────────────────────────────
+
+model SkillCluster {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  description String
+  order       Int     @default(0)
+  skills      Skill[]
+}
+
+model Skill {
+  id          String  @id @default(cuid())
+  clusterId   String
+  name        String  @unique
+  description String
+  anchors     Json?   // { NOT_STARTED, IN_PROGRESS, PROFICIENT, EXPERT }
+  order       Int     @default(0)
+
+  cluster      SkillCluster          @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+  proficiencies UserSkillProficiency[]
+  edgesFrom    SkillEdge[]           @relation("EdgeFrom")
+  edgesTo      SkillEdge[]           @relation("EdgeTo")
+  jobFrequencies JobSkillFrequency[]
+}
+
+enum ProficiencyLevel {
+  NOT_STARTED
+  IN_PROGRESS
+  PROFICIENT
+  EXPERT
+}
+
+model UserSkillProficiency {
+  id        String           @id @default(cuid())
+  userId    String
+  skillId   String
+  level     ProficiencyLevel @default(NOT_STARTED)
+  updatedAt DateTime         @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skill Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, skillId])
+}
+
+enum SkillEdgeType {
+  ADJACENT
+  PREREQUISITE
+}
+
+model SkillEdge {
+  id         String        @id @default(cuid())
+  fromSkillId String
+  toSkillId   String
+  edgeType    SkillEdgeType
+
+  fromSkill Skill @relation("EdgeFrom", fields: [fromSkillId], references: [id], onDelete: Cascade)
+  toSkill   Skill @relation("EdgeTo", fields: [toSkillId], references: [id], onDelete: Cascade)
+
+  @@unique([fromSkillId, toSkillId])
+}
+
+// ── Gap Engine: Job Postings ─────────────────────────────────────────
+
+model JobPosting {
+  id          String   @id @default(cuid())
+  title       String
+  company     String
+  location    String?
+  description String
+  url         String?
+  source      String   @default("adzuna")
+  sourceId    String   @unique
+  skills      Json?    // extracted skill IDs
+  salary      String?
+  fetchedAt   DateTime @default(now())
+}
+
+model JobSkillFrequency {
+  id           String   @id @default(cuid())
+  skillId      String
+  frequency    Float    // 0-100 percentage
+  period       String   // e.g. "2026-03", "2026-W12"
+  jobCount     Int      @default(0)
+  calculatedAt DateTime @default(now())
+
+  skill Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([skillId, period])
+}
+
+// ── Story Lab ────────────────────────────────────────────────────────
+
+model StoryLabProgress {
+  id          String   @id @default(cuid())
+  userId      String
+  moduleId    String   // A, B, C, D, E
+  lessonId    String
+  completedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, moduleId, lessonId])
+}
+
+model SlideSubmission {
+  id        String   @id @default(cuid())
+  userId    String
+  slides    Json     // [{ title, body, chartIntent }]
+  feedback  Json?    // Claude feedback
+  iteration Int      @default(1)
+  scenarioId String?
+  createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

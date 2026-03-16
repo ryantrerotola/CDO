@@ -16,10 +16,18 @@ import {
   LogOut,
   MoreHorizontal,
   X,
+  Search,
+  GitBranch,
+  Presentation,
+  GraduationCap,
 } from "lucide-react";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/gap-engine", label: "Gap Engine", icon: Search },
+  { href: "/skill-graph", label: "Skill Graph", icon: GitBranch },
+  { href: "/story-lab", label: "Story Lab", icon: Presentation },
+  { href: "/learning-plan", label: "Learning Plan", icon: GraduationCap },
   { href: "/goals", label: "Goals", icon: Target },
   { href: "/content", label: "Content", icon: Newspaper },
   { href: "/progress", label: "Progress", icon: TrendingUp },

@@ -14,6 +14,7 @@ export default function SignUpPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -31,12 +32,17 @@ export default function SignUpPage() {
       return;
     }
 
+    if (!inviteCode.trim()) {
+      setError("An invite code is required");
+      return;
+    }
+
     setLoading(true);
 
     const res = await fetch("/api/auth/signup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password }),
+      body: JSON.stringify({ name, email, password, inviteCode: inviteCode.trim() }),
     });
 
     const data = await res.json();
@@ -91,6 +97,15 @@ export default function SignUpPage() {
                   {error}
                 </div>
               )}
+              <div>
+                <label className="text-sm font-medium mb-1 block">Invite Code</label>
+                <Input
+                  placeholder="Enter your invite code"
+                  value={inviteCode}
+                  onChange={(e) => setInviteCode(e.target.value)}
+                  required
+                />
+              </div>
               <div>
                 <label className="text-sm font-medium mb-1 block">Name</label>
                 <Input
