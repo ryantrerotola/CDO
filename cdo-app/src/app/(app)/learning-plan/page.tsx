@@ -1,14 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
   GraduationCap,
   RefreshCw,
   Calendar,
   CheckCircle2,
-  ChevronDown,
-  ChevronRight,
   Sparkles,
 } from "lucide-react";
 
@@ -31,33 +29,74 @@ const PHASES = [
 ];
 
 export default function LearningPlanPage() {
+  const [planId, setPlanId] = useState<string | null>(null);
   const [plan, setPlan] = useState<LearningPlan | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedPhase, setExpandedPhase] = useState<string | null>("thirtyDay");
   const [completedActions, setCompletedActions] = useState<Set<string>>(new Set());
 
-  const generate = async () => {
+  // Load saved plan on mount
+  useEffect(() => {
+    loadPlan();
+  }, []);
+
+  const loadPlan = async () => {
     setLoading(true);
+    try {
+      const res = await fetch("/api/learning-plan");
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.plan) {
+          setPlanId(data.id);
+          setPlan(data.plan as LearningPlan);
+          setCompletedActions(new Set(data.completedActions || []));
+        }
+      }
+    } catch {
+      // No saved plan, that's fine
+    }
+    setLoading(false);
+  };
+
+  const generate = async () => {
+    setGenerating(true);
     setError(null);
     try {
       const res = await fetch("/api/learning-plan", { method: "POST" });
       if (!res.ok) throw new Error("Failed to generate plan");
       const data = await res.json();
-      setPlan(data);
+      setPlanId(data.id);
+      setPlan(data.plan as LearningPlan);
+      setCompletedActions(new Set());
       setExpandedPhase("thirtyDay");
     } catch {
       setError("Failed to generate learning plan. Please try again.");
     } finally {
-      setLoading(false);
+      setGenerating(false);
     }
   };
+
+  const saveCompletedActions = useCallback(async (actions: Set<string>) => {
+    if (!planId) return;
+    try {
+      await fetch("/api/learning-plan", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: planId, completedActions: Array.from(actions) }),
+      });
+    } catch {
+      // Silent fail for background save
+    }
+  }, [planId]);
 
   const toggleAction = (key: string) => {
     setCompletedActions((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
       else next.add(key);
+      saveCompletedActions(next);
       return next;
     });
   };
@@ -72,6 +111,17 @@ export default function LearningPlanPage() {
     return total > 0 ? Math.round((done / total) * 100) : 0;
   };
 
+  if (loading) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+        <div className="text-center py-20">
+          <RefreshCw className="h-8 w-8 mx-auto mb-4 text-[var(--muted-foreground)] animate-spin" />
+          <p className="text-sm text-[var(--muted-foreground)]">Loading learning plan...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <div className="mb-6">
@@ -84,7 +134,7 @@ export default function LearningPlanPage() {
         </p>
       </div>
 
-      {!plan && !loading && (
+      {!plan && !generating && (
         <Card>
           <CardContent className="py-12 text-center">
             <Sparkles className="h-12 w-12 mx-auto mb-4 text-[var(--primary)] opacity-60" />
@@ -106,7 +156,7 @@ export default function LearningPlanPage() {
         </Card>
       )}
 
-      {loading && (
+      {generating && (
         <Card>
           <CardContent className="py-12 text-center">
             <RefreshCw className="h-8 w-8 mx-auto mb-4 text-[var(--primary)] animate-spin" />
@@ -117,7 +167,7 @@ export default function LearningPlanPage() {
         </Card>
       )}
 
-      {plan && !loading && (
+      {plan && !generating && (
         <div className="space-y-4">
           {/* Phase overview cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">

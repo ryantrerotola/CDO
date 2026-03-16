@@ -24,7 +24,7 @@ export interface DeckTemplate {
   id: string;
   name: string;
   purpose: string;
-  slides: { title: string; guidance: string }[];
+  slides: { title: string; guidance: string; example?: string }[];
 }
 
 // ── Module A: CDO Communication Framework ───────────────────────────
@@ -83,6 +83,12 @@ If someone reads your content and says "So what?" — you've failed.
 | Business VP | Their KPIs, their team's pain | "This gives your team X / reduces Y hours of manual work" |
 
 **CDO trap:** Presenting to the CFO about "data mesh architecture" when they want to hear "30% reduction in analytics infrastructure cost."`,
+    example: {
+      before: `"I want to share our data mesh implementation roadmap. We'll decompose our monolithic data warehouse into domain-oriented data products using federated computational governance, enabling autonomous domain teams to publish and consume data through standardized APIs..."`,
+      after: `[To CFO]: "By restructuring how teams access data, we'll cut analytics infrastructure costs 30% and reduce time-to-insight from 5 days to same-day — freeing up $1.2M annually."
+
+[To CTO]: "We're moving to domain-owned data products with a centralized platform layer. This eliminates the pipeline bottleneck and reduces cross-team dependencies by 60%."`,
+    },
   },
 ];
 
@@ -153,9 +159,9 @@ export const DECK_TEMPLATES: DeckTemplate[] = [
     name: "Insight Briefing",
     purpose: "Share a key finding or data insight with executives",
     slides: [
-      { title: "The Insight (assertive title)", guidance: "State the conclusion upfront. One sentence that tells them what they need to know." },
-      { title: "The Evidence", guidance: "Supporting data — 1-2 charts max. Choose the chart that best proves your point." },
-      { title: "The Implication", guidance: "What should we do about this? Clear recommendation with next steps." },
+      { title: "The Insight (assertive title)", guidance: "State the conclusion upfront. One sentence that tells them what they need to know.", example: "\"Customer churn accelerated 22% in Q3, driven entirely by our mid-market segment.\"" },
+      { title: "The Evidence", guidance: "Supporting data — 1-2 charts max. Choose the chart that best proves your point.", example: "Bar chart: churn rate by segment (Enterprise 3%, Mid-Market 18%, SMB 8%). Annotation highlighting mid-market spike coincides with competitor launch." },
+      { title: "The Implication", guidance: "What should we do about this? Clear recommendation with next steps.", example: "\"Recommend launching a retention program for mid-market accounts >$50K ARR by end of Q4. Expected save rate: 35%, preserving ~$2.1M in annual revenue.\"" },
     ],
   },
   {
@@ -163,10 +169,10 @@ export const DECK_TEMPLATES: DeckTemplate[] = [
     name: "Strategy Proposal",
     purpose: "Propose a new data initiative or strategic direction",
     slides: [
-      { title: "The Opportunity", guidance: "What's the business problem or opportunity? Frame in business terms, not data terms." },
-      { title: "The Approach", guidance: "Your recommended solution — what, how, who. Keep it high-level." },
-      { title: "The Investment & Return", guidance: "What it costs, what we get back, and when. ROI in terms the CFO understands." },
-      { title: "The Ask", guidance: "Exactly what you need: budget, headcount, timeline, executive sponsorship." },
+      { title: "The Opportunity", guidance: "What's the business problem or opportunity? Frame in business terms, not data terms.", example: "\"We're leaving $8M/year on the table because 60% of pricing decisions are made without data. Competitors using ML-driven pricing are capturing market share.\"" },
+      { title: "The Approach", guidance: "Your recommended solution — what, how, who. Keep it high-level.", example: "\"Phase 1 (Q1): Centralize pricing data from 4 systems. Phase 2 (Q2): Deploy ML pricing model for top 3 product lines. Phase 3 (Q3): Scale to all lines + A/B testing framework.\"" },
+      { title: "The Investment & Return", guidance: "What it costs, what we get back, and when. ROI in terms the CFO understands.", example: "\"Investment: $1.2M (platform + 2 FTEs). Expected return: $3.4M incremental revenue in Year 1. Payback: 5 months. NPV over 3 years: $7.8M.\"" },
+      { title: "The Ask", guidance: "Exactly what you need: budget, headcount, timeline, executive sponsorship.", example: "\"Requesting: $1.2M budget approval, VP Sales as executive sponsor, and a decision by March 15 to hit Q2 deployment.\"" },
     ],
   },
   {
@@ -174,10 +180,10 @@ export const DECK_TEMPLATES: DeckTemplate[] = [
     name: "Board Update",
     purpose: "Quarterly data strategy update for the board of directors",
     slides: [
-      { title: "Executive Summary", guidance: "3 bullets max: biggest win, biggest risk, one ask. Board members skim." },
-      { title: "Progress Against Strategy", guidance: "Traffic light status for each strategic initiative. Green/yellow/red, no gray." },
-      { title: "Risk & Compliance", guidance: "Data privacy, AI governance, regulatory updates. What the board needs to know." },
-      { title: "Forward Look", guidance: "Next quarter priorities and any decisions needed from the board." },
+      { title: "Executive Summary", guidance: "3 bullets max: biggest win, biggest risk, one ask. Board members skim.", example: "\"1. Launched AI fraud detection — $4.2M in prevented losses this quarter. 2. RISK: EU AI Act compliance gap identified, remediation underway. 3. ASK: Approve $800K for data privacy tooling before July deadline.\"" },
+      { title: "Progress Against Strategy", guidance: "Traffic light status for each strategic initiative. Green/yellow/red, no gray.", example: "\"Data Platform Migration: GREEN (on track, 80% complete). Self-Serve Analytics: YELLOW (adoption at 45%, target 60%). AI Governance: RED (policy framework delayed 6 weeks by legal review).\"" },
+      { title: "Risk & Compliance", guidance: "Data privacy, AI governance, regulatory updates. What the board needs to know.", example: "\"GDPR audit passed with zero findings. EU AI Act: 3 high-risk AI systems identified, classification docs due by Q3. Data retention policy updated for 2 new jurisdictions.\"" },
+      { title: "Forward Look", guidance: "Next quarter priorities and any decisions needed from the board.", example: "\"Q2 priorities: (1) Complete platform migration, (2) Launch data literacy program for 200 managers, (3) Pilot GenAI use cases in customer service. DECISION NEEDED: Approve GenAI acceptable use policy.\"" },
     ],
   },
   {
@@ -185,9 +191,9 @@ export const DECK_TEMPLATES: DeckTemplate[] = [
     name: "QBR (Quarterly Business Review)",
     purpose: "Review data team performance and plan ahead",
     slides: [
-      { title: "What We Delivered", guidance: "Top 3-5 outcomes, framed as business impact not technical output." },
-      { title: "What's Blocked", guidance: "Honest about obstacles. Don't hide problems — present them with proposed solutions." },
-      { title: "What's Next", guidance: "Next quarter priorities, aligned to business goals. Show the connection." },
+      { title: "What We Delivered", guidance: "Top 3-5 outcomes, framed as business impact not technical output.", example: "\"1. Data catalog launched — 60% adoption in first month, reducing 'find the data' time by 70%. 2. Migrated 3 critical pipelines — eliminated 15 hrs/week of manual ETL. 3. Hired 2 analytics engineers — embedded in Marketing and Finance.\"" },
+      { title: "What's Blocked", guidance: "Honest about obstacles. Don't hide problems — present them with proposed solutions.", example: "\"Data quality initiative delayed 4 weeks — vendor contract stuck in legal. PROPOSED FIX: Escalate to CLO for expedited review, fallback to open-source Great Expectations if not resolved by March 1.\"" },
+      { title: "What's Next", guidance: "Next quarter priorities, aligned to business goals. Show the connection.", example: "\"Q2: (1) Self-serve analytics pilot with Sales (supports revenue target), (2) Data quality framework launch (supports ops efficiency goal), (3) ML model for demand forecasting (supports supply chain optimization).\"" },
     ],
   },
   {
@@ -195,9 +201,9 @@ export const DECK_TEMPLATES: DeckTemplate[] = [
     name: "Initiative Post-Mortem",
     purpose: "Review a completed initiative — what worked, what didn't",
     slides: [
-      { title: "What We Set Out To Do", guidance: "Original goals and success criteria. Were they clear?" },
-      { title: "What Actually Happened", guidance: "Results vs. expectations. Be honest about both wins and misses." },
-      { title: "Lessons Learned", guidance: "3 specific, actionable lessons. Not platitudes — things we'll do differently." },
+      { title: "What We Set Out To Do", guidance: "Original goals and success criteria. Were they clear?", example: "\"Goal: Migrate data warehouse to Snowflake in 90 days. Success criteria: (1) All 47 production dashboards running on new platform, (2) Query performance ≥ 2x improvement, (3) Zero data loss.\"" },
+      { title: "What Actually Happened", guidance: "Results vs. expectations. Be honest about both wins and misses.", example: "\"Completed in 118 days (28 days late). 45/47 dashboards migrated (2 deprecated). Query performance 3.2x faster. Zero data loss. Unplanned win: discovered and fixed 12 data quality issues during migration.\"" },
+      { title: "Lessons Learned", guidance: "3 specific, actionable lessons. Not platitudes — things we'll do differently.", example: "\"1. SCOPE: We underestimated legacy SQL translation — next time, add 30% buffer for migration projects. 2. TESTING: Parallel-run period was too short (1 week) — minimum 3 weeks going forward. 3. COMMUNICATION: Weekly stakeholder updates prevented panic when timeline slipped.\"" },
     ],
   },
 ];

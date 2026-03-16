@@ -8,6 +8,7 @@ import Link from "next/link";
 interface ReadinessData {
   score: number;
   breakdown: {
+    resume: { score: number; weight: number; hasResume: boolean; skillCount: number; readiness: string };
     gapClosure: { score: number; weight: number; proficientCount: number; totalSkills: number };
     skillGraph: { score: number; weight: number; avgProficiency: number };
     storyLab: { score: number; weight: number; completedModules: number; totalModules: number };
@@ -67,13 +68,24 @@ export function ReadinessScore() {
             <p className="text-xs text-[var(--muted-foreground)] mb-1">Composite Score</p>
             {data && (
               <div className="space-y-1">
-                <BreakdownBar label="Gap Closure" value={data.breakdown.gapClosure.score} weight={40} />
-                <BreakdownBar label="Skill Graph" value={data.breakdown.skillGraph.score} weight={30} />
-                <BreakdownBar label="Story Lab" value={data.breakdown.storyLab.score} weight={30} />
+                <BreakdownBar label="Resume" value={data.breakdown.resume.score} />
+                <BreakdownBar label="Gap Closure" value={data.breakdown.gapClosure.score} />
+                <BreakdownBar label="Skill Graph" value={data.breakdown.skillGraph.score} />
+                <BreakdownBar label="Story Lab" value={data.breakdown.storyLab.score} />
               </div>
             )}
           </div>
         </div>
+
+        {data && !data.breakdown.resume.hasResume && (
+          <Link
+            href="/resume"
+            className="flex items-center justify-between text-xs text-[var(--primary)] hover:underline mb-2"
+          >
+            Upload resume to boost your score
+            <ArrowRight className="h-3 w-3" />
+          </Link>
+        )}
 
         <Link
           href="/skill-graph"
@@ -87,7 +99,7 @@ export function ReadinessScore() {
   );
 }
 
-function BreakdownBar({ label, value, weight }: { label: string; value: number; weight: number }) {
+function BreakdownBar({ label, value }: { label: string; value: number }) {
   return (
     <div className="flex items-center gap-2">
       <span className="text-[10px] text-[var(--muted-foreground)] w-16 truncate">{label}</span>

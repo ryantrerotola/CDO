@@ -34,6 +34,7 @@ model User {
   skillProficiencies   UserSkillProficiency[]
   storyLabProgress     StoryLabProgress[]
   slideSubmissions     SlideSubmission[]
+  learningPlans        LearningPlan[]
 }
 
 model Account {
@@ -348,6 +349,17 @@ model StoryLabProgress {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, moduleId, lessonId])
+}
+
+model LearningPlan {
+  id              String   @id @default(cuid())
+  userId          String
+  plan            Json     // { thirtyDay, sixtyDay, ninetyDay }
+  completedActions Json?   // array of completed action keys
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model SlideSubmission {

@@ -1,5 +1,7 @@
 "use client";
 
+import { Handle, Position } from "@xyflow/react";
+
 const clusterGradients: Record<string, string> = {
   "Strategic Leadership": "from-purple-500 to-purple-700",
   "Technical Depth": "from-blue-500 to-blue-700",
@@ -26,6 +28,8 @@ export function ClusterNode({ data }: { data: ClusterNodeData }) {
       <p className="text-[10px] opacity-80 mt-0.5">
         {data.proficientCount}/{data.skillCount} skills
       </p>
+      <Handle type="source" position={Position.Bottom} className="!bg-transparent !border-0 !w-0 !h-0" />
+      <Handle type="target" position={Position.Top} className="!bg-transparent !border-0 !w-0 !h-0" />
     </div>
   );
 }

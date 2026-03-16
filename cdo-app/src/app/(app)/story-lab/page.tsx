@@ -289,9 +289,15 @@ export default function StoryLabPage() {
                       <div className="w-6 h-6 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] flex items-center justify-center text-xs font-bold flex-shrink-0">
                         {i + 1}
                       </div>
-                      <div>
+                      <div className="flex-1">
                         <p className="text-sm font-medium">{slide.title}</p>
                         <p className="text-xs text-[var(--muted-foreground)] mt-0.5">{slide.guidance}</p>
+                        {slide.example && (
+                          <div className="mt-2 p-2 rounded bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800">
+                            <p className="text-[10px] font-semibold text-green-700 dark:text-green-400 mb-0.5">Example</p>
+                            <p className="text-xs text-green-900 dark:text-green-100 italic">{slide.example}</p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}

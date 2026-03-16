@@ -1,11 +1,36 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAuthUserId } from "@/lib/api-auth";
 import { generateLearningPlan } from "@/lib/ai";
 
 /**
+ * GET /api/learning-plan
+ * Retrieve the user's most recent saved learning plan.
+ */
+export async function GET() {
+  const userId = await getAuthUserId();
+  if (userId instanceof NextResponse) return userId;
+
+  const saved = await prisma.learningPlan.findFirst({
+    where: { userId },
+    orderBy: { updatedAt: "desc" },
+  });
+
+  if (!saved) {
+    return NextResponse.json(null);
+  }
+
+  return NextResponse.json({
+    id: saved.id,
+    plan: saved.plan,
+    completedActions: saved.completedActions || [],
+    createdAt: saved.createdAt,
+  });
+}
+
+/**
  * POST /api/learning-plan
- * Generate a 30/60/90 day learning plan using Claude.
+ * Generate a 30/60/90 day learning plan using Claude and save it.
  */
 export async function POST() {
   const userId = await getAuthUserId();
@@ -77,7 +102,21 @@ export async function POST() {
       readinessScore,
     });
 
-    return NextResponse.json(plan);
+    // Save to database
+    const saved = await prisma.learningPlan.create({
+      data: {
+        userId,
+        plan: plan as unknown as Record<string, unknown>,
+        completedActions: [],
+      },
+    });
+
+    return NextResponse.json({
+      id: saved.id,
+      plan: saved.plan,
+      completedActions: [],
+      createdAt: saved.createdAt,
+    });
   } catch (error) {
     console.error("Learning plan generation failed:", error);
     return NextResponse.json(
@@ -85,4 +124,34 @@ export async function POST() {
       { status: 500 }
     );
   }
+}
+
+/**
+ * PATCH /api/learning-plan
+ * Update completed actions for a saved learning plan.
+ */
+export async function PATCH(request: NextRequest) {
+  const userId = await getAuthUserId();
+  if (userId instanceof NextResponse) return userId;
+
+  const { id, completedActions } = await request.json();
+
+  if (!id || !Array.isArray(completedActions)) {
+    return NextResponse.json({ error: "id and completedActions required" }, { status: 400 });
+  }
+
+  const plan = await prisma.learningPlan.findFirst({
+    where: { id, userId },
+  });
+
+  if (!plan) {
+    return NextResponse.json({ error: "Plan not found" }, { status: 404 });
+  }
+
+  const updated = await prisma.learningPlan.update({
+    where: { id },
+    data: { completedActions },
+  });
+
+  return NextResponse.json({ id: updated.id, completedActions: updated.completedActions });
 }

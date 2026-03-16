@@ -5,9 +5,10 @@ import { getAuthUserId } from "@/lib/api-auth";
 /**
  * GET /api/readiness-score
  * Composite CDO Readiness Score (0-100):
- * - Gap closure (40%): % of skills at PROFICIENT+
- * - Skill graph progress (30%): average proficiency across all skills
- * - Story Lab completions (30%): modules completed
+ * - Resume strength (25%): AI-assessed readiness from uploaded resume
+ * - Gap closure (25%): % of skills at PROFICIENT+
+ * - Skill graph progress (25%): average proficiency across all skills
+ * - Story Lab completions (25%): modules completed
  */
 export async function GET() {
   const userId = await getAuthUserId();
@@ -53,19 +54,62 @@ export async function GET() {
   const totalModules = 5;
   const storyLabScore = Math.round((uniqueModules.size / totalModules) * 100);
 
-  // Weighted composite
+  // Resume: get the most recent resume analysis
+  const latestResume = await prisma.resume.findFirst({
+    where: { userId },
+    orderBy: { uploadedAt: "desc" },
+    select: { recommendations: true, skillsFound: true },
+  });
+
+  let resumeScore = 0;
+  let resumeSkillCount = 0;
+  let resumeReadiness = "";
+  if (latestResume) {
+    const recs = latestResume.recommendations as Record<string, unknown> | null;
+    const skills = latestResume.skillsFound as unknown[] | null;
+    resumeSkillCount = Array.isArray(skills) ? skills.length : 0;
+
+    if (recs?.overallReadiness) {
+      const readiness = String(recs.overallReadiness).toLowerCase();
+      resumeReadiness = readiness;
+      // Map AI readiness assessment to a score
+      if (readiness.includes("strong") || readiness.includes("high") || readiness.includes("ready")) {
+        resumeScore = 80;
+      } else if (readiness.includes("moderate") || readiness.includes("developing") || readiness.includes("growing")) {
+        resumeScore = 55;
+      } else if (readiness.includes("early") || readiness.includes("emerging") || readiness.includes("beginning")) {
+        resumeScore = 30;
+      } else {
+        // Fallback: score based on number of CDO-relevant skills found
+        resumeScore = Math.min(Math.round((resumeSkillCount / 20) * 100), 100);
+      }
+    } else {
+      // No readiness field — use skill count as proxy
+      resumeScore = Math.min(Math.round((resumeSkillCount / 20) * 100), 100);
+    }
+  }
+
+  // Weighted composite (4 pillars, 25% each)
   const composite = Math.round(
-    gapClosureScore * 0.4 +
-    skillGraphScore * 0.3 +
-    storyLabScore * 0.3
+    resumeScore * 0.25 +
+    gapClosureScore * 0.25 +
+    skillGraphScore * 0.25 +
+    storyLabScore * 0.25
   );
 
   return NextResponse.json({
     score: Math.min(composite, 100),
     breakdown: {
-      gapClosure: { score: gapClosureScore, weight: 40, proficientCount: proficientPlusCount, totalSkills },
-      skillGraph: { score: skillGraphScore, weight: 30, avgProficiency: Math.round(avgProficiency * 100) / 100 },
-      storyLab: { score: storyLabScore, weight: 30, completedModules: uniqueModules.size, totalModules },
+      resume: {
+        score: resumeScore,
+        weight: 25,
+        hasResume: !!latestResume,
+        skillCount: resumeSkillCount,
+        readiness: resumeReadiness,
+      },
+      gapClosure: { score: gapClosureScore, weight: 25, proficientCount: proficientPlusCount, totalSkills },
+      skillGraph: { score: skillGraphScore, weight: 25, avgProficiency: Math.round(avgProficiency * 100) / 100 },
+      storyLab: { score: storyLabScore, weight: 25, completedModules: uniqueModules.size, totalModules },
     },
   });
 }
