@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 import { goalTemplates } from "@/data/seed-content";
 import { useAppStore } from "@/lib/store";
-import { getProgressPercentage } from "@/lib/utils";
+import { getProgressPercentage, periodProgress, periodLabel, goalStreak } from "@/lib/utils";
 
 interface SubGoalRec {
   title: string;
@@ -617,74 +617,86 @@ export default function GoalsPage() {
           </Card>
         )}
 
-        {activeGoals.map((goal) => (
-          <Card key={goal.id}>
-            <CardContent className="py-4">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <h3 className="font-medium">{goal.title}</h3>
-                    <Badge variant="outline">{goal.type}</Badge>
-                    <Badge variant="outline">{goal.frequency}</Badge>
-                  </div>
-                  {goal.description && (
-                    <p className="text-sm text-[var(--muted-foreground)] mb-2">
-                      {goal.description}
-                    </p>
-                  )}
-                  <Progress
-                    value={getProgressPercentage(
-                      goal.currentValue,
-                      goal.targetValue
+        {activeGoals.map((goal) => {
+          const isRecurring = goal.frequency !== "ONCE";
+          const progress = isRecurring
+            ? periodProgress(goal.entries, goal.frequency as "DAILY" | "WEEKLY" | "MONTHLY" | "QUARTERLY" | "YEARLY")
+            : goal.currentValue;
+          const label = periodLabel(goal.frequency as "DAILY" | "WEEKLY" | "MONTHLY" | "QUARTERLY" | "YEARLY" | "ONCE");
+          const streak = isRecurring
+            ? goalStreak(goal.entries, goal.frequency as "DAILY" | "WEEKLY" | "MONTHLY" | "QUARTERLY" | "YEARLY", goal.targetValue)
+            : 0;
+          const streakUnit = goal.frequency === "DAILY" ? "day" : goal.frequency === "WEEKLY" ? "week" : goal.frequency === "MONTHLY" ? "month" : "period";
+
+          return (
+            <Card key={goal.id}>
+              <CardContent className="py-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <h3 className="font-medium">{goal.title}</h3>
+                      <Badge variant="outline">{goal.type}</Badge>
+                      <Badge variant="outline">{goal.frequency}</Badge>
+                      {streak > 0 && (
+                        <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300 font-medium">
+                          <Flame className="h-3 w-3" />
+                          {streak} {streakUnit} streak
+                        </span>
+                      )}
+                    </div>
+                    {goal.description && (
+                      <p className="text-sm text-[var(--muted-foreground)] mb-2">
+                        {goal.description}
+                      </p>
                     )}
-                    showLabel
-                    className="mb-2"
-                  />
-                  <div className="flex items-center gap-4 text-xs text-[var(--muted-foreground)]">
-                    <span>
-                      {goal.currentValue} / {goal.targetValue}
-                    </span>
-                    {goal.streak > 0 && (
-                      <span className="flex items-center gap-1">
-                        <Flame className="h-3 w-3 text-orange-500" />
-                        {goal.streak} day streak
+                    <Progress
+                      value={getProgressPercentage(progress, goal.targetValue)}
+                      showLabel
+                      className="mb-2"
+                    />
+                    <div className="flex items-center gap-4 text-xs text-[var(--muted-foreground)]">
+                      <span>
+                        {progress} / {goal.targetValue} {label}
                       </span>
-                    )}
-                    {goal.deadline && (
-                      <span>Due: {new Date(goal.deadline).toLocaleDateString()}</span>
-                    )}
+                      {isRecurring && (
+                        <span>{goal.currentValue} all time</span>
+                      )}
+                      {goal.deadline && (
+                        <span>Due: {new Date(goal.deadline).toLocaleDateString()}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 ml-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => logGoalEntry(goal.id, 1)}
+                    >
+                      <CheckCircle2 className="h-4 w-4 mr-1" />
+                      Log
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        updateGoal(goal.id, { status: "COMPLETED" })
+                      }
+                    >
+                      Complete
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeGoal(goal.id)}
+                    >
+                      <Trash2 className="h-4 w-4 text-[var(--destructive)]" />
+                    </Button>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 ml-4">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => logGoalEntry(goal.id, 1)}
-                  >
-                    <CheckCircle2 className="h-4 w-4 mr-1" />
-                    Log
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() =>
-                      updateGoal(goal.id, { status: "COMPLETED" })
-                    }
-                  >
-                    Complete
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeGoal(goal.id)}
-                  >
-                    <Trash2 className="h-4 w-4 text-[var(--destructive)]" />
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {/* Completed Goals */}

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { CheckCircle2, Circle, Flame, Target, RefreshCw } from "lucide-react";
+import { periodProgress, periodLabel, goalStreak } from "@/lib/utils";
 
 interface GoalEntry {
   id: string;
@@ -22,13 +23,7 @@ interface Goal {
   parentGoalId: string | null;
 }
 
-/** Count entries logged today for a goal */
-function todayProgress(entries: GoalEntry[]): number {
-  const today = new Date().toISOString().slice(0, 10);
-  return entries
-    .filter((e) => e.date.slice(0, 10) === today)
-    .reduce((sum, e) => sum + e.value, 0);
-}
+type Freq = "DAILY" | "WEEKLY" | "MONTHLY" | "QUARTERLY" | "YEARLY" | "ONCE";
 
 /** Pick the goals most relevant as "today's actions" */
 function pickDailyActions(goals: Goal[]): Goal[] {
@@ -69,19 +64,15 @@ export function TodaysActions() {
   }, [fetchGoals]);
 
   const toggleComplete = async (goal: Goal) => {
-    const todayDone = todayProgress(goal.entries);
-    const isComplete = todayDone >= goal.targetValue;
+    const progress = periodProgress(goal.entries, goal.frequency as Freq);
+    if (progress >= goal.targetValue) return; // Already done this period
 
-    if (isComplete) return; // Already done today
-
-    // Log a goal entry via the API
     try {
       await fetch("/api/goals/log-read", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ contentType: "MANUAL", goalId: goal.id }),
       });
-      // Dispatch event so other components can react
       window.dispatchEvent(new CustomEvent("goal-progress"));
       fetchGoals();
     } catch {
@@ -91,17 +82,8 @@ export function TodaysActions() {
 
   const actions = pickDailyActions(goals);
   const completedCount = actions.filter(
-    (g) => todayProgress(g.entries) >= (g.frequency === "DAILY" ? g.targetValue : g.targetValue)
+    (g) => periodProgress(g.entries, g.frequency as Freq) >= g.targetValue
   ).length;
-
-  const frequencyLabel: Record<string, string> = {
-    DAILY: "today",
-    WEEKLY: "this week",
-    MONTHLY: "this month",
-    QUARTERLY: "this quarter",
-    YEARLY: "this year",
-    ONCE: "total",
-  };
 
   return (
     <Card>
@@ -142,12 +124,14 @@ export function TodaysActions() {
 
         {!loading &&
           actions.map((goal) => {
-            const daily = goal.frequency === "DAILY";
-            const progress = daily
-              ? todayProgress(goal.entries)
-              : goal.currentValue;
+            const freq = goal.frequency as Freq;
+            const progress = periodProgress(goal.entries, freq);
             const target = goal.targetValue;
             const isComplete = progress >= target;
+            const streak = freq !== "ONCE"
+              ? goalStreak(goal.entries, freq, target)
+              : 0;
+            const label = periodLabel(freq);
 
             return (
               <button
@@ -166,9 +150,17 @@ export function TodaysActions() {
                   >
                     {goal.title}
                   </p>
-                  <p className="text-xs text-[var(--muted-foreground)]">
-                    {progress}/{target} {frequencyLabel[goal.frequency] || ""}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs text-[var(--muted-foreground)]">
+                      {progress}/{target} {label}
+                    </p>
+                    {streak > 0 && (
+                      <span className="text-xs text-orange-600 dark:text-orange-400 flex items-center gap-0.5">
+                        <Flame className="h-3 w-3" />
+                        {streak}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--secondary)] text-[var(--secondary-foreground)]">
                   {goal.type}
